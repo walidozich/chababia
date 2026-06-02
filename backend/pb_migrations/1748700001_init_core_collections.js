@@ -243,11 +243,39 @@ migrate((app) => {
 
 }, (app) => {
     // down: delete our collections in reverse dependency order.
-    // "users" is owned by PocketBase's automigration — we don't delete it, just leave the custom fields.
     for (const name of ["registrations", "activities", "establishments", "categories"]) {
         try {
             const c = app.findCollectionByNameOrId(name);
             app.delete(c);
         } catch (_) {}
     }
+
+    // Reverse the in-place "users" mutations so a subsequent `migrate up` is clean.
+    // "users" is owned by PocketBase's automigration — we don't delete it, we just
+    // undo our custom fields/indexes and restore the default name + avatar fields.
+    try {
+        const users = app.findCollectionByNameOrId("users");
+
+        for (const f of ["full_name","phone","role","preferred_language","commune","wilaya","interests"]) {
+            users.fields.removeByName(f);
+        }
+
+        // drop our custom indexes; keep PocketBase's own (email, tokenKey, etc.)
+        users.indexes = users.indexes.filter((idx) =>
+            idx.indexOf("idx_users_role") === -1 &&
+            idx.indexOf("idx_users_commune") === -1
+        );
+
+        // restore PocketBase's default fields removed in the up migration
+        users.fields.addMarshaledJSON(JSON.stringify([
+            { type: "text", name: "name" },
+            {
+                type: "file", name: "avatar",
+                maxSelect: 1, maxSize: 5242880,
+                mimeTypes: ["image/jpeg","image/png","image/svg+xml","image/gif","image/webp"],
+            },
+        ]));
+
+        app.save(users);
+    } catch (_) {}
 });
