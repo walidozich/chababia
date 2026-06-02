@@ -1,0 +1,14 @@
+# PocketBase binary and download archive (not source — re-downloadable)
+pocketbase
+pocketbase_*.zip
+
+# PocketBase bundled docs (not ours)
+CHANGELOG.md
+LICENSE.md
+
+# PocketBase runtime data (SQLite databases, generated types, notify state)
+pb_data/
+
+# OS / editor noise
+.DS_Store
+*.swp
