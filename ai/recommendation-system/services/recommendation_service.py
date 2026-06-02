@@ -1,0 +1,1 @@
+# Orchestrates DB → embed → search → format response

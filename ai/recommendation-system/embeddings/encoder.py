@@ -1,0 +1,1 @@
+# Text → vector (using a lightweight model)

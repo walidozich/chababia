@@ -1,0 +1,1 @@
+# Create/ensure Qdrant collection exists

@@ -1,0 +1,1 @@
+# Build and upsert vectors from SQLite data

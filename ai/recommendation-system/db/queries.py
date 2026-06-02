@@ -1,0 +1,1 @@
+# Reusable query functions (activities, categories, etc.)

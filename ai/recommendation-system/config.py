@@ -1,0 +1,1 @@
+# Settings (DB path, Qdrant URL, model name, etc.)
