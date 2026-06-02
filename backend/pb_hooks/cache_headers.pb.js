@@ -3,13 +3,10 @@
 // Sets Cache-Control headers and handles conditional GET (ETag / 304) for
 // public collection endpoints. Uses routerUse so e.response is available.
 //
-// ETag strategy: weak ETag derived from the collection's highest record ID.
-// ID changes on any insert or delete, so the ETag invalidates correctly for
-// those events. Modifications to existing records don't change the ID —
-// the Cache-Control max-age provides the freshness guarantee for those cases.
-//
-// NOTE: PocketBase 0.39 base collections do not store per-row created/updated
-// timestamps in SQLite, so ID-based ETag is the lightweight alternative.
+// ETag strategy: weak ETag = "<record count>-<latest updated timestamp>".
+// The count changes on inserts/deletes; the max(updated) changes on inserts and
+// in-place edits (migration 1748700011 added the updated autodate field). Together
+// they invalidate the cache for every data change.
 //
 // Cache durations per spec §13.3:
 //   categories / *_translations / documents → 7 days
@@ -48,14 +45,14 @@ routerUse((e) => {
 
     if (maxAge === 0) return e.next();
 
-    // Weak ETag: sort by -id gives the lexicographically latest record ID.
+    // Weak ETag = "<count>-<latest updated>" — detects inserts, deletes, and edits.
     // $app (global) is used to avoid any goja closure issue.
     let etag = "";
     try {
-        const latest = $app.findRecordsByFilter(collectionName, "id != ''", "-id", 1, 0);
-        if (latest && latest.length > 0) {
-            etag = 'W/"' + latest[0].id + '"';
-        }
+        const total  = $app.countRecords(collectionName);
+        const latest = $app.findRecordsByFilter(collectionName, "id != ''", "-updated", 1, 0);
+        const stamp  = (latest && latest.length > 0) ? String(latest[0].get("updated")) : "empty";
+        etag = 'W/"' + total + '-' + stamp + '"';
     } catch (_) {}
 
     // Conditional GET: return 304 when client's ETag still matches
