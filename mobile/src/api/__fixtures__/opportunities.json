@@ -1,0 +1,98 @@
+{
+  "data": [
+    {
+      "id": "evt_a1b2c3",
+      "title": "Tournoi de Handball Inter-quartiers",
+      "category": "Sport",
+      "dateTs": 1751500800,
+      "distanceM": 1240,
+      "slotsLeft": 8,
+      "establishmentName": "Maison de Jeunes Bir Mourad Raïs"
+    },
+    {
+      "id": "evt_d4e5f6",
+      "title": "Atelier de Photographie Numérique",
+      "category": "Culture",
+      "dateTs": 1751587200,
+      "distanceM": 850,
+      "slotsLeft": 3,
+      "establishmentName": "Maison de Jeunes Hydra"
+    },
+    {
+      "id": "evt_g7h8i9",
+      "title": "Formation Initiation au Développement Web",
+      "category": "Formation",
+      "dateTs": 1751673600,
+      "distanceM": 2300,
+      "slotsLeft": 12,
+      "establishmentName": "Complexe Sportif Kouba"
+    },
+    {
+      "id": "evt_j0k1l2",
+      "title": "Sortie Nature et Randonnée au Jardin d'Essai",
+      "category": "Loisirs",
+      "dateTs": 1751760000,
+      "distanceM": 3400,
+      "slotsLeft": 15,
+      "establishmentName": "Maison de Jeunes El Harrach"
+    },
+    {
+      "id": "evt_m3n4o5",
+      "title": "Club de Théâtre et Expression Artistique",
+      "category": "Culture",
+      "dateTs": 1751846400,
+      "distanceM": 560,
+      "slotsLeft": 1,
+      "establishmentName": "Maison de Jeunes Sidi M'hamed"
+    },
+    {
+      "id": "evt_p6q7r8",
+      "title": "Compétition de Natation Wilaya",
+      "category": "Sport",
+      "dateTs": 1751932800,
+      "distanceM": 4100,
+      "slotsLeft": 6,
+      "establishmentName": "Piscine Olympique El Biar"
+    },
+    {
+      "id": "evt_s9t0u1",
+      "title": "Cours de Musique Traditionnelle",
+      "category": "Culture",
+      "dateTs": 1752019200,
+      "distanceM": 1800,
+      "slotsLeft": 10,
+      "establishmentName": "Maison de Jeunes Bab El Oued"
+    },
+    {
+      "id": "evt_v2w3x4",
+      "title": "Atelier Jardinage Urbain",
+      "category": "Loisirs",
+      "dateTs": 1752105600,
+      "distanceM": 2700,
+      "slotsLeft": 4,
+      "establishmentName": "Jardin Botanique du Hamma"
+    },
+    {
+      "id": "evt_y5z6a7",
+      "title": "Formation en Entrepreneuriat Jeune",
+      "category": "Formation",
+      "dateTs": 1752192000,
+      "distanceM": 1500,
+      "slotsLeft": 20,
+      "establishmentName": "Centre de Formation Professionnelle Alger Centre"
+    },
+    {
+      "id": "evt_b8c9d0",
+      "title": "Camp de Vacances Jeunes Éco-citoyens",
+      "category": "Loisirs",
+      "dateTs": 1752278400,
+      "distanceM": 5000,
+      "slotsLeft": 0,
+      "establishmentName": "Camp de Jeunes Zéralda"
+    }
+  ],
+  "meta": {
+    "total": 47,
+    "cachedAt": 1751414400
+  }
+}
