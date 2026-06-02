@@ -1,55 +1,76 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-// Sets HTTP Cache-Control headers on public collection endpoints.
-// Uses routerUse (HTTP middleware layer) so e.response is always available.
+// Sets Cache-Control headers and handles conditional GET (ETag / 304) for
+// public collection endpoints. Uses routerUse so e.response is available.
+//
+// ETag strategy: weak ETag derived from the collection's highest record ID.
+// ID changes on any insert or delete, so the ETag invalidates correctly for
+// those events. Modifications to existing records don't change the ID —
+// the Cache-Control max-age provides the freshness guarantee for those cases.
+//
+// NOTE: PocketBase 0.39 base collections do not store per-row created/updated
+// timestamps in SQLite, so ID-based ETag is the lightweight alternative.
+//
 // Cache durations per spec §13.3:
-//   categories / *_translations  → 7 days   (rarely changes)
-//   establishments               → 24 hours (changes slowly)
-//   *_translations (activity/est)→ 24 hours (follows parent)
-//   activities                   → 30 min   (changes moderately)
-//   announcements / newsletters  → 10 min   (can be urgent)
-//   documents                    → 7 days   (usually stable)
-//   talent_showcase              → 1 hour
+//   categories / *_translations / documents → 7 days
+//   establishments / *_translations         → 24 hours
+//   activities                              → 30 min
+//   announcements / newsletters             → 10 min
+//   talent_showcase                         → 1 hour
 
-// Path format for PocketBase collection APIs:
-//   /api/collections/{name}/records
-//   /api/collections/{name}/records/{id}
-// Cache rules are defined inline to avoid goja closure/scope issues.
 routerUse((e) => {
     const path = (e.request && e.request.url && e.request.url.path) ? e.request.url.path : "";
-
     if (!path.startsWith("/api/collections/")) return e.next();
 
     const parts          = path.split("/");
     const collectionName = parts[3];
     const segment        = parts[4];
-
     if (segment !== "records") return e.next();
 
-    // 7 days — rarely changes
+    // Determine max-age (inline — avoids goja closure/scope issues)
+    let maxAge = 0;
     if (collectionName === "categories" ||
         collectionName === "category_translations" ||
         collectionName === "documents") {
-        e.response.header().set("Cache-Control", "public, max-age=604800");
-
-    // 24 hours — changes slowly
+        maxAge = 604800;
     } else if (collectionName === "establishments" ||
                collectionName === "activity_translations" ||
                collectionName === "establishment_translations") {
-        e.response.header().set("Cache-Control", "public, max-age=86400");
-
-    // 30 min — changes moderately
+        maxAge = 86400;
     } else if (collectionName === "activities") {
-        e.response.header().set("Cache-Control", "public, max-age=1800");
-
-    // 10 min — can be urgent
+        maxAge = 1800;
     } else if (collectionName === "announcements" ||
                collectionName === "newsletters") {
-        e.response.header().set("Cache-Control", "public, max-age=600");
-
-    // 1 hour
+        maxAge = 600;
     } else if (collectionName === "talent_showcase") {
-        e.response.header().set("Cache-Control", "public, max-age=3600");
+        maxAge = 3600;
+    }
+
+    if (maxAge === 0) return e.next();
+
+    // Weak ETag: sort by -id gives the lexicographically latest record ID.
+    // $app (global) is used to avoid any goja closure issue.
+    let etag = "";
+    try {
+        const latest = $app.findRecordsByFilter(collectionName, "id != ''", "-id", 1, 0);
+        if (latest && latest.length > 0) {
+            etag = 'W/"' + latest[0].id + '"';
+        }
+    } catch (_) {}
+
+    // Conditional GET: return 304 when client's ETag still matches
+    const clientEtag = (e.request && e.request.header) ? e.request.header.get("If-None-Match") : "";
+    if (etag && clientEtag && clientEtag === etag) {
+        e.response.header().set("Cache-Control", "public, max-age=" + maxAge);
+        e.response.header().set("ETag", etag);
+        e.response.writeHeader(304);
+        return; // short-circuit — no body for 304
+    }
+
+    // Normal response: set headers before handler writes the body
+    e.response.header().set("Cache-Control", "public, max-age=" + maxAge);
+    if (etag) {
+        e.response.header().set("ETag", etag);
     }
 
     return e.next();
