@@ -317,6 +317,7 @@ try {
 | activities, establishments, announcements, newsletters, documents, talent_showcase | ✅ published only | — | admin |
 | registrations | ❌ | own only | own create |
 | project_submissions | ❌ | own only | own create |
+| content_reports | ❌ | ❌ | auth create / superuser review |
 | recommendation_requests | ❌ | ❌ | superuser only |
 | users | ❌ | own record | self signup / self update |
 

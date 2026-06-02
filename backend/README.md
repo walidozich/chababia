@@ -35,13 +35,13 @@ Password: Chababia2026!
 
 ```
 pb_migrations/   JS migrations — collections, indexes, access rules, seed data (applied in order)
-pb_hooks/        JS hooks — server-side logic (capacity + QR, cache headers, AI recommendations)
+pb_hooks/        JS hooks — server-side logic (capacity + QR, reports, audit, cache, AI)
 pb_data/         SQLite runtime data (gitignored — auto-created on first run)
 docs/            API documentation (OpenAPI spec + frontend SDK cookbook)
 todo.md          Phased build checklist (all phases complete)
 ```
 
-## Collections (14)
+## Collections (15)
 
 | Collection | Public read | Notes |
 |---|---|---|
@@ -56,6 +56,7 @@ todo.md          Phased build checklist (all phases complete)
 | `project_submissions` | own only | youth project ideas, optional PDF ≤5 MB |
 | `talent_showcase` | ✅ published | admin-curated, no video hosting |
 | `recommendation_requests` | superuser only | compact AI request log |
+| `content_reports` | superuser only | authenticated users report outdated or incorrect public content |
 | `activity_translations` | ✅ | ar / fr / tzm |
 | `establishment_translations` | ✅ | ar / fr / tzm |
 | `category_translations` | ✅ | ar / fr / tzm |
@@ -64,6 +65,10 @@ todo.md          Phased build checklist (all phases complete)
 
 - **`registrations.pb.js`** — on registration create: locks the owner to the auth user, enforces
   capacity server-side (→ `waiting_list` when full), and generates a 32-char QR token.
+- **`reports.pb.js`** — on report create: locks `reporter` to the auth user and forces
+  `status = new`.
+- **`audit.pb.js`** — stamps `created_by` / `updated_by` when the target collection has those
+  fields, including Admin UI edits.
 - **`cache_headers.pb.js`** — sets `Cache-Control` per collection (spec §13.3) plus a weak `ETag`,
   and returns `304` on a matching `If-None-Match`.
 - **`recommendations.pb.js`** — `POST /api/admin/event-recommendations`: admin-only AI event-idea
@@ -108,6 +113,6 @@ Hot-reload on hook changes + SQL logging:
 
 ## Verification
 
-A full clean-room verification (fresh DB → all migrations → 23 end-to-end checks covering
+A full clean-room verification (fresh DB → all migrations → end-to-end checks covering
 collections, seed counts, access rules, cache headers/ETag/304, the capacity+QR hook, and the
-recommendations endpoint) passes 23/23. See `todo.md` Phase 8 for the checklist.
+recommendations/report/audit hooks) passes. See `todo.md` for the checklist.

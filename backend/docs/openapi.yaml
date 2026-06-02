@@ -8,9 +8,11 @@ info:
 
     Backend: **PocketBase 0.39.0** (single binary + SQLite). Every collection auto-exposes
     the same 5 CRUD routes; access is decided by per-collection rules and the auth token on
-    each request. Two custom hooks add server-side logic on top of the generic API:
+    each request. Custom hooks add server-side logic on top of the generic API:
 
     - **registrations** — capacity enforcement (→ `waiting_list` when full) + 32-char QR token
+    - **reports** — report ownership + new-report status enforcement
+    - **audit** — `created_by` / `updated_by` stamping where the fields exist
     - **cache_headers** — `Cache-Control` + weak `ETag`/`304` on public collection endpoints
 
     Plus one custom route: `POST /api/admin/event-recommendations` (admin-only AI helper).
@@ -45,7 +47,7 @@ tags:
   - name: Content
     description: Announcements, newsletters, documents (public read)
   - name: Engagement
-    description: Project submissions, talent showcase
+    description: Project submissions, talent showcase, content reports
   - name: Translations
     description: ar / fr / tzm translation rows (public read)
   - name: Files
@@ -527,6 +529,60 @@ paths:
                         items: { $ref: '#/components/schemas/TalentShowcase' }
         '304': { $ref: '#/components/responses/NotModified' }
 
+  /api/collections/content_reports/records:
+    post:
+      tags: [Engagement]
+      summary: Report outdated or incorrect public content
+      description: |
+        Auth required. The server hook ignores client-supplied `reporter` and `status`:
+        - `reporter` is forced to the authenticated user
+        - `status` is forced to `new`
+
+        The review queue is private to superusers.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target_type, target_id, reason]
+              properties:
+                target_type: { type: string, enum: [activity, establishment, announcement, newsletter, document] }
+                target_id:   { type: string }
+                reason:      { type: string, enum: [outdated_info, wrong_contact, cancelled, wrong_location, other] }
+                details:     { type: string }
+            example:
+              target_type: activity
+              target_id: ACT_ID
+              reason: outdated_info
+              details: "The date shown no longer matches the ODEJ poster."
+      responses:
+        '200':
+          description: Created report
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContentReport' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    get:
+      tags: [Engagement]
+      summary: List content reports for staff review
+      description: Superuser-only review queue. Youth/admin-role users receive 403.
+      responses:
+        '200':
+          description: Content report list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/ContentReport' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
   # ───────────────────────── TRANSLATIONS ─────────────────────────
   /api/collections/activity_translations/records:
     get:
@@ -901,6 +957,7 @@ components:
         related_activity:      { type: string }
         language:              { type: string }
         status:                { type: string, enum: [draft, published, archived] }
+        last_verified_at:      { type: string, format: date-time }
 
     Newsletter:
       type: object
@@ -916,6 +973,7 @@ components:
         thumbnail:             { type: string }
         status:                { type: string, enum: [draft, published, archived] }
         published_at:          { type: string, format: date-time }
+        last_verified_at:      { type: string, format: date-time }
 
     Document:
       type: object
@@ -928,6 +986,7 @@ components:
         category:      { type: string }
         establishment: { type: string }
         status:        { type: string, enum: [draft, published, archived] }
+        last_verified_at: { type: string, format: date-time }
 
     ProjectSubmission:
       type: object
@@ -957,6 +1016,20 @@ components:
         external_link: { type: string }
         status:        { type: string, enum: [draft, published, archived] }
         published_at:  { type: string, format: date-time }
+        last_verified_at: { type: string, format: date-time }
+
+    ContentReport:
+      type: object
+      properties:
+        id:          { type: string }
+        reporter:    { type: string, description: forced to the authenticated user by server hook }
+        target_type: { type: string, enum: [activity, establishment, announcement, newsletter, document] }
+        target_id:   { type: string }
+        reason:      { type: string, enum: [outdated_info, wrong_contact, cancelled, wrong_location, other] }
+        details:     { type: string }
+        status:      { type: string, enum: [new, reviewed, resolved, dismissed], description: new on user create; superuser updates during review }
+        created_by:  { type: string }
+        updated_by:  { type: string }
 
     ActivityTranslation:
       type: object
