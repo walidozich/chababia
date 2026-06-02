@@ -5,9 +5,7 @@
 
 ### 1.1 Project Name
 
-Working name: **Chabab Connect**
-
-The final name can be changed later.
+Working name: **Chababia**
 
 ### 1.2 Context
 
@@ -253,33 +251,6 @@ If the platform grows nationally later, the system can migrate to PostgreSQL.
 
 ---
 
-## 6.4 Hosting
-
-Recommended deployment:
-
-```txt
-Small VPS
-Caddy or Nginx reverse proxy
-HTTPS
-PocketBase service
-SQLite database file
-Scheduled backups
-```
-
-Avoid in MVP:
-
-```txt
-Redis
-Kubernetes
-Microservices
-MongoDB cluster
-Separate AI service
-Heavy analytics pipeline
-Video hosting
-Realtime social feed
-```
-
----
 
 # 7. Final High-Level System Design
 
@@ -389,37 +360,7 @@ flowchart TD
 
 ---
 
-# 8. Deployment Design
 
-```mermaid
-flowchart TD
-    Phone[Youth Phone] -->|HTTPS| Domain[Domain Name]
-
-    StaffBrowser[ODEJ Staff Browser] -->|HTTPS| Domain
-
-    Domain --> Proxy[Caddy / Nginx<br/>TLS + Compression]
-
-    Proxy --> PB[PocketBase Service]
-
-    PB --> SQLite[(SQLite Database File)]
-    PB --> Storage[Local File Storage<br/>Images + Documents]
-
-    Backup[Scheduled Backup] --> SQLite
-    Backup --> Storage
-```
-
-The deployment is intentionally simple:
-
-* One VPS
-* One PocketBase service
-* One SQLite database
-* One file storage directory
-* HTTPS through Caddy or Nginx
-* Scheduled backups
-
-This reduces infrastructure, cost, maintenance, and carbon footprint.
-
----
 
 # 9. Main Functional Modules
 
@@ -2529,21 +2470,4 @@ Digest, reminders, and admin newsletters only
 Media:
 Compressed images, no video hosting
 
-Deployment:
-Small VPS + Caddy/Nginx + HTTPS + scheduled backups
-```
-
----
-
-# 26. One-Sentence Product Pitch
-
-Chabab Connect is a lightweight multilingual mobile platform that helps Algerian youth discover verified ODEJ activities, spaces, and services while allowing ODEJ staff to update information easily through a no-code dashboard.
-
----
-
-# 27. One-Sentence Technical Pitch
-
-The platform uses a lightweight React Native mobile app connected to a single PocketBase backend with SQLite, mobile-first caching, HTTP cache validation, compressed media, and optional admin-side AI only, allowing ODEJ staff to publish verified youth opportunities without code while minimizing bandwidth, battery usage, server compute, and infrastructure complexity.
-
-```
 ```
