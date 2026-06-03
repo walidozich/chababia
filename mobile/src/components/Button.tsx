@@ -1,42 +1,41 @@
 import {
   Pressable,
-  Text,
   StyleSheet,
+  Text,
   type PressableProps,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { colors, typography, rounded, spacing } from '../design-system';
+import { colors, typography, spacing, rounded } from '../design-system';
 
-type ButtonVariant = 'primary' | 'secondary' | 'tertiary';
+type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'icon-circular';
 
-type ButtonProps = Omit<PressableProps, 'style'> & {
+interface ButtonProps extends Omit<PressableProps, 'style'> {
   title: string;
   variant?: ButtonVariant;
+  accessibilityLabel: string;
   style?: StyleProp<ViewStyle>;
-};
+}
 
 export function Button({
   title,
   variant = 'primary',
+  accessibilityLabel,
   style,
-  disabled,
   ...props
 }: ButtonProps) {
-  const variantStyles = stylesByVariant[variant];
-  const stateStyle = disabled ? variantStyles.disabled : {};
+  const isInverse = variant === 'secondary';
+  const isIconOnly = variant === 'icon-circular';
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={title}
-      accessibilityState={{ disabled: disabled ?? undefined }}
-      disabled={disabled}
+      accessibilityLabel={accessibilityLabel}
       style={({ pressed }) => [
         styles.base,
-        variantStyles.default,
-        stateStyle,
-        pressed && !disabled && variantStyles.pressed,
+        styles[variant],
+        pressed && stylesPressed[variant],
+        isIconOnly && styles.iconCircular,
         style,
       ]}
       {...props}
@@ -44,9 +43,11 @@ export function Button({
       <Text
         style={[
           styles.text,
-          variantStyles.text,
-          disabled && variantStyles.textDisabled,
+          isIconOnly && styles.iconText,
+          { color: isInverse ? colors.canvas : colors.ink },
         ]}
+        maxFontSizeMultiplier={1.3}
+        numberOfLines={1}
       >
         {title}
       </Text>
@@ -56,42 +57,62 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: rounded.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  primary: {
+    backgroundColor: colors.primary,
+    borderRadius: rounded.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+  },
+  secondary: {
+    backgroundColor: colors.ink,
+    borderRadius: rounded.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+  },
+  tertiary: {
+    backgroundColor: colors.canvas,
+    borderColor: colors.ink,
+    borderRadius: rounded.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+  },
+  'icon-circular': {
+    backgroundColor: colors.canvas,
+    borderColor: colors.ink,
+    borderWidth: 1,
+  },
+  iconCircular: {
+    borderRadius: rounded.full,
+    padding: spacing.sm,
+    minWidth: 40,
+    minHeight: 40,
+  },
+  iconText: {
+    fontSize: 20,
   },
   text: {
-    ...typography.buttonMd,
+    ...typography['button-md'],
+    color: colors.ink,
   },
 });
 
-const stylesByVariant = {
-  primary: StyleSheet.create({
-    default: { backgroundColor: colors.primary },
-    pressed: { backgroundColor: colors.primaryActive },
-    disabled: { backgroundColor: colors.canvasSoft, opacity: 0.6 },
-    text: { color: colors.onPrimary },
-    textDisabled: { color: colors.mute },
-  }),
-  secondary: StyleSheet.create({
-    default: { backgroundColor: colors.canvasSoft },
-    pressed: { backgroundColor: colors.primaryPale },
-    disabled: { backgroundColor: colors.canvasSoft, opacity: 0.4 },
-    text: { color: colors.ink },
-    textDisabled: { color: colors.mute },
-  }),
-  tertiary: StyleSheet.create({
-    default: {
-      backgroundColor: colors.canvas,
-      borderWidth: 1,
-      borderColor: colors.ink,
-    },
-    pressed: { backgroundColor: colors.canvasSoft },
-    disabled: { borderColor: colors.mute, opacity: 0.4 },
-    text: { color: colors.ink },
-    textDisabled: { color: colors.mute },
-  }),
-};
+const stylesPressed = StyleSheet.create({
+  primary: {
+    opacity: 0.85,
+  },
+  secondary: {
+    opacity: 0.85,
+  },
+  tertiary: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
+  },
+  'icon-circular': {
+    backgroundColor: colors.ink,
+  },
+});

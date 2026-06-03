@@ -1,69 +1,70 @@
-import {
-  Pressable,
-  Text,
-  View,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { colors, typography, spacing, rounded } from '../design-system';
+import { Badge } from './Badge';
 
-export type OpportunityData = {
+interface OpportunityItemProps {
   id: string;
   title: string;
   category: string;
-  distanceM: number;
-  dateTs: number;
+  date: string;
+  distance: string;
   slotsLeft: number;
   establishmentName: string;
-};
-
-type OpportunityItemProps = {
-  opportunity: OpportunityData;
   onPress: (id: string) => void;
-};
+  accessibilityLabel: string;
+  style?: StyleProp<ViewStyle>;
+}
 
-export function OpportunityItem({ opportunity, onPress }: OpportunityItemProps) {
-  const date = new Date(opportunity.dateTs * 1000);
-  const formattedDate = date.toLocaleDateString('fr-FR', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  });
-  const distanceKm = (opportunity.distanceM / 1000).toFixed(1);
-
+export function OpportunityItem({
+  id,
+  title,
+  category,
+  date,
+  distance,
+  slotsLeft,
+  establishmentName,
+  onPress,
+  accessibilityLabel,
+  style,
+}: OpportunityItemProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${opportunity.title}, ${opportunity.category}, ${distanceKm} km, ${formattedDate}`}
-      onPress={() => onPress(opportunity.id)}
-      style={({ pressed }) => [styles.container, pressed && styles.pressed]}
+      accessibilityLabel={accessibilityLabel}
+      onPress={() => onPress(id)}
+      style={({ pressed }) => [
+        styles.container,
+        pressed && styles.pressed,
+        style,
+      ]}
     >
       <View style={styles.header}>
-        <Text style={styles.category} numberOfLines={1}>
-          {opportunity.category}
-        </Text>
-        <Text style={styles.distance} numberOfLines={1}>
-          {distanceKm} km
+        <Badge
+          label={category}
+          variant="positive"
+          accessibilityLabel={`Catégorie : ${category}`}
+        />
+        <Text style={styles.distance} maxFontSizeMultiplier={1.3} numberOfLines={1}>
+          {distance}
         </Text>
       </View>
 
-      <Text style={styles.title} numberOfLines={2}>
-        {opportunity.title}
+      <Text style={styles.title} maxFontSizeMultiplier={1.3} numberOfLines={2}>
+        {title}
+      </Text>
+
+      <Text style={styles.establishment} maxFontSizeMultiplier={1.3} numberOfLines={1}>
+        {establishmentName}
       </Text>
 
       <View style={styles.footer}>
-        <Text style={styles.meta} numberOfLines={1}>
-          {opportunity.establishmentName}
+        <Text style={styles.date} maxFontSizeMultiplier={1.3} numberOfLines={1}>
+          {date}
         </Text>
-        <Text style={styles.date} numberOfLines={1}>
-          {formattedDate}
+        <Text style={styles.slots} maxFontSizeMultiplier={1.3} numberOfLines={1}>
+          {slotsLeft > 0 ? `${slotsLeft} places restantes` : 'Complet'}
         </Text>
       </View>
-
-      {opportunity.slotsLeft > 0 && (
-        <Text style={styles.slots} numberOfLines={1}>
-          {opportunity.slotsLeft} places restantes
-        </Text>
-      )}
     </Pressable>
   );
 }
@@ -71,53 +72,47 @@ export function OpportunityItem({ opportunity, onPress }: OpportunityItemProps) 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.canvas,
+    borderWidth: 1,
+    borderColor: colors.ink,
     borderRadius: rounded.xl,
-    padding: spacing.lg,
-    marginHorizontal: spacing.lg,
-    marginVertical: spacing.xs,
-    gap: spacing.sm,
+    padding: spacing.xl,
+    marginHorizontal: spacing.xl,
+    marginVertical: spacing.sm,
   },
   pressed: {
-    backgroundColor: colors.canvasSoft,
+    opacity: 0.8,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  category: {
-    ...typography.caption,
-    color: colors.positiveDeep,
-    backgroundColor: colors.primaryPale,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xxs,
-    borderRadius: rounded.pill,
-    overflow: 'hidden',
+    marginBottom: spacing.sm,
   },
   distance: {
-    ...typography.caption,
-    color: colors.mute,
+    ...typography['body-sm'],
+    color: colors.ink,
   },
   title: {
-    ...typography.bodyMdStrong,
+    ...typography['display-xs'],
     color: colors.ink,
+    marginBottom: spacing.xs,
+  },
+  establishment: {
+    ...typography['body-sm'],
+    color: colors.ink,
+    marginBottom: spacing.sm,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  meta: {
-    ...typography.bodySm,
-    color: colors.body,
-    flex: 1,
-  },
   date: {
-    ...typography.bodySm,
-    color: colors.mute,
+    ...typography['body-sm-strong'],
+    color: colors.ink,
   },
   slots: {
-    ...typography.caption,
-    color: colors.positive,
+    ...typography['body-sm'],
+    color: colors.ink,
   },
 });

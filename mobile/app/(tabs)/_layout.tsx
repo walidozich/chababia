@@ -1,58 +1,35 @@
 import { Tabs } from 'expo-router';
-import { StyleSheet } from 'react-native';
-import { colors, typography } from '../../src/design-system';
+import React from 'react';
+
+import { HapticTab } from '@/components/haptic-tab';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
+  const colorScheme = useColorScheme();
+
   return (
     <Tabs
       screenOptions={{
-        headerStyle: { backgroundColor: colors.canvasSoft },
-        headerTitleStyle: { ...typography.bodySmStrong, color: colors.ink },
-        tabBarActiveTintColor: colors.onPrimary,
-        tabBarInactiveTintColor: colors.mute,
-        tabBarActiveBackgroundColor: colors.primary,
-        tabBarInactiveBackgroundColor: colors.canvas,
-        tabBarStyle: styles.tabBar,
-        tabBarLabelStyle: typography.caption,
-        tabBarItemStyle: styles.tabBarItem,
-      }}
-    >
+        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        headerShown: false,
+        tabBarButton: HapticTab,
+      }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Opportunités',
-          headerTitle: 'Chababia',
+          title: 'Home',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="tickets"
+        name="explore"
         options={{
-          title: 'Mes billets',
-          headerTitle: 'Mes billets',
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Paramètres',
-          headerTitle: 'Paramètres',
+          title: 'Explore',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
         }}
       />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: colors.canvas,
-    borderTopColor: colors.canvasSoft,
-    paddingTop: 4,
-    height: 56,
-  },
-  tabBarItem: {
-    borderRadius: 12,
-    marginHorizontal: 4,
-    marginVertical: 4,
-    paddingVertical: 4,
-  },
-});

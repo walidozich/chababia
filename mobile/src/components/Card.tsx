@@ -1,22 +1,18 @@
 import { View, StyleSheet, type ViewProps, type StyleProp, type ViewStyle } from 'react-native';
-import { colors, rounded, spacing } from '../design-system';
+import { colors, spacing, rounded } from '../design-system';
 
-type CardVariant = 'content' | 'featureSage' | 'featureGreen' | 'featureDark';
+type CardVariant = 'content' | 'feature-dark';
 
-type CardProps = ViewProps & {
+interface CardProps extends ViewProps {
   variant?: CardVariant;
   style?: StyleProp<ViewStyle>;
-};
+}
 
-export function Card({
-  variant = 'content',
-  style,
-  children,
-  ...props
-}: CardProps) {
+export function Card({ variant = 'content', style, children, ...props }: CardProps) {
   return (
     <View
-      style={[styles.base, stylesByVariant[variant], style]}
+      accessibilityRole="none"
+      style={[styles.base, variant === 'feature-dark' ? styles.featureDark : styles.content, style]}
       {...props}
     >
       {children}
@@ -29,11 +25,12 @@ const styles = StyleSheet.create({
     borderRadius: rounded.xl,
     padding: spacing.xl,
   },
+  content: {
+    backgroundColor: colors.canvas,
+    borderWidth: 1,
+    borderColor: colors.ink,
+  },
+  featureDark: {
+    backgroundColor: colors.ink,
+  },
 });
-
-const stylesByVariant: Record<CardVariant, ViewStyle> = {
-  content: { backgroundColor: colors.canvas },
-  featureSage: { backgroundColor: colors.canvasSoft },
-  featureGreen: { backgroundColor: colors.primaryPale },
-  featureDark: { backgroundColor: colors.ink },
-};

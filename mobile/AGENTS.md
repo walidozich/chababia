@@ -102,37 +102,34 @@ mobile/
 
 ---
 
-## 🎨 DESIGN SYSTEM (Extrait de DESIGN.md)
+## 🎨 DESIGN SYSTEM (Canonical — issu de DESIGN.md)
 
-### Couleurs
+### Couleurs (palette stricte 3 couleurs)
 
 | Token | Valeur | Usage |
 |---|---|---|
-| `primary` | `#9fe870` | CTA principal |
-| `primary-active` | `#cdffad` | Hover/press |
-| `primary-pale` | `#e2f6d5` | Badge positif |
-| `ink` | `#0e0f0c` | Texte principal |
-| `body` | `#454745` | Texte secondaire |
-| `mute` | `#868685` | Texte tertiaire |
-| `canvas` | `#ffffff` | Fond cartes |
-| `canvas-soft` | `#e8ebe6` | Fond page (sage) |
-| `positive` | `#2ead4b` | Succès |
-| `negative` | `#d03238` | Erreur |
-| `warning` | `#ffd11a` | Attention |
+| `primary` | `#9fe870` | Accent lime — CTA principal, texte sur fond sombre |
+| `ink` | `#163300` | Encre — Texte principal, fonds sombres, bordures |
+| `canvas` | `#dddddd` | Toile — Fond de page, fond de cartes claires |
 
-### Typographie (Inter, substitut Wise Sans)
+### Typographie (Stack Sans Notch, Google Fonts)
 
-| Token | Size | Weight | Usage |
-|---|---|---|---|
-| `display-sm` | 32px | 600 | Titres section |
-| `display-xs` | 24px | 600 | Sous-titres |
-| `body-lg` | 20px | 400 | Lead |
-| `body-md` | 16px | 400 | Corps |
-| `body-md-strong` | 16px | 600 | Corps gras |
-| `body-sm` | 14px | 400 | Secondaire |
-| `body-sm-strong` | 14px | 600 | Labels nav |
-| `caption` | 12px | 400 | Fine print |
-| `button-md` | 16px | 600 | Boutons |
+| Token | Size | Weight | Line Height | Letter Spacing | Usage |
+|---|---|---|---|---|---|
+| `display-mega` | 126px | 700 | 107.1px | 0 | Titre Hero très large échelle |
+| `display-xxl` | 96px | 700 | 81.6px | 0 | Titre Hero secondaire |
+| `display-xl` | 64px | 700 | 54.4px | 0 | Titre Hero standard |
+| `display-lg` | 47px | 400 | 70.5px | -0.108px | Titre large |
+| `display-md` | 40px | 700 | 34px | 0 | Titres de sections / cartes |
+| `display-sm` | 32px | 600 | 38.4px | -0.96px | Titres section mobile |
+| `display-xs` | 24px | 600 | 31.2px | -0.48px | Sous-titres |
+| `body-lg` | 20px | 400 | 30px | 0 | Paragraphes de tête |
+| `body-md` | 16px | 400 | 24px | 0 | Corps de texte par défaut |
+| `body-md-strong` | 16px | 600 | 24px | 0 | Corps gras |
+| `body-sm` | 14px | 400 | 20px | 0 | Secondaire |
+| `body-sm-strong` | 14px | 600 | 20px | 0 | Labels nav |
+| `caption` | 12px | 400 | 16px | 0 | Fine print |
+| `button-md` | 16px | 600 | 24px | 0 | Labels de boutons |
 
 ### Spacing (base 4px)
 
@@ -144,12 +141,34 @@ mobile/
 
 > **Canonical :** Boutons = `xl` (24px) · Cartes = `xl` (24px)
 
+### Composants (Wise-inspired)
+
+| Composant | BG | Texte | Bordure | Typo | Radius | Padding |
+|---|---|---|---|---|---|---|
+| `nav-bar` | `canvas` | `ink` | — | `body-sm-strong` | — | `md` `xl` |
+| `nav-link` | — | `ink` | — | `body-sm-strong` | — | — |
+| `button-primary` | `primary` | `ink` | — | `button-md` | `xl` | `md` `xl` |
+| `button-secondary` | `ink` | `canvas` | — | `button-md` | `xl` | `md` `xl` |
+| `button-tertiary` | `canvas` | `ink` | `ink` | `button-md` | `xl` | `md` `xl` |
+| `button-icon-circular` | `canvas` | `ink` | `ink` | — | `full` | `sm` |
+| `text-input` | `canvas` | `ink` | `ink` | `body-md` | `md` | `md` `lg` |
+| `card-content` | `canvas` | `ink` | `ink` | `body-md` | `xl` | `xl` |
+| `card-feature-dark` | `ink` | `primary` | — | `body-md` | `xl` | `xl` |
+| `hero-band` | `canvas` | `ink` | — | `display-mega` | — | `3xl` `xl` |
+| `hero-band-dark` | `ink` | `primary` | — | `display-mega` | — | `3xl` `xl` |
+| `content-band` | `canvas` | `ink` | — | `display-md` | — | `3xl` `xl` |
+| `badge-positive` | `primary` | `ink` | — | `body-sm-strong` | `pill` | `xs` `md` |
+| `badge-negative` | `ink` | `canvas` | — | `body-sm-strong` | `pill` | `xs` `md` |
+| `footer` | `ink` | `canvas` | — | `body-sm` | — | `3xl` `xl` |
+
 ---
 
 ## 🏗️ ARCHITECTURE
 
 ```
-React Native + Expo SDK 56+
+React Native 0.81 + Expo SDK 54
+React 19.1.0
+Node.js ≥ 20.19.x
 TypeScript strict
 Expo Router (file-based routing)
 StyleSheet natif (pas de lib UI tierce)
@@ -158,6 +177,7 @@ AsyncStorage (cache + préférences)
 expo-crypto (UUID pour token anonyme)
 expo-secure-store (stockage token)
 expo-localization (langue + RTL)
+expo-font (Stack Sans Notch embarquée)
 expo-notifications (locales uniquement)
 react-native-qrcode-svg (QR client-side)
 ```
@@ -237,8 +257,30 @@ export async function getUserToken(): Promise<string> {
 
 ---
 
+## 🧠 ACTIVATION DES SKILLS (skills.sh)
+
+Le script `skills.sh` à la racine du projet active les 13 skills avant chaque session :
+
+```bash
+#!/bin/bash
+# Active tous les skills pour une session opencode
+# Usage: source skills.sh (ou chargé automatiquement via ~/.bashrc)
+export OPENCODE_SKILLS="frontend-design,vercel-react-best-practices,web-design-guidelines,grill-me,impeccable,ui-ux-polish,ui-ux-designer,uxui-principles,ui-ux-reviewer,vercel-react-native-skills,react-native-best-practices,react-native-design,react-native-architecture"
+echo "[Skills: ALL 13] activés"
+```
+
+**Installation automatique :** Ajouter cette ligne dans `~/.bashrc` :
+
+```bash
+source /home/jeunecrack/Bureau/chababia/mobile/skills.sh
+```
+
+---
+
 ## 🔗 FICHIERS DE RÉFÉRENCE
 
-- `DESIGN.md` — Design system Wise-inspired (544 lignes)
+- `DESIGN.md` — Design system Wise-inspired (290 lignes)
 - `PRD.md` — Product Requirements Document (499 lignes)
+- `SKILL.md` — Skill Activation Mandate (88 lignes)
+- `skills.sh` — Script d'activation des 13 skills
 - `../spec v2.md` — Spécification globale Chababia (2473 lignes)

@@ -1,119 +1,98 @@
-import { View, Text, FlatList, StyleSheet } from 'react-native';
-import { useState, useCallback } from 'react';
-import { colors, typography, spacing } from '../../src/design-system';
-import {
-  OpportunityItem,
-  type OpportunityData,
-} from '../../src/components/OpportunityItem';
-import { Chip } from '../../src/components/Chip';
+import { Image } from 'expo-image';
+import { Platform, StyleSheet } from 'react-native';
 
-const MOCK_OPPORTUNITIES: OpportunityData[] = [
-  {
-    id: 'evt_1',
-    title: 'Tournoi de Handball Inter-quartiers',
-    category: 'Sport',
-    distanceM: 1240,
-    dateTs: 1751500800,
-    slotsLeft: 8,
-    establishmentName: 'Maison de Jeunes Bir Mourad Raïs',
-  },
-  {
-    id: 'evt_2',
-    title: 'Atelier de Photographie Numérique',
-    category: 'Culture',
-    distanceM: 850,
-    dateTs: 1751587200,
-    slotsLeft: 3,
-    establishmentName: 'Maison de Jeunes Hydra',
-  },
-  {
-    id: 'evt_3',
-    title: 'Formation Initiation au Développement Web',
-    category: 'Formation',
-    distanceM: 2300,
-    dateTs: 1751673600,
-    slotsLeft: 12,
-    establishmentName: 'Complexe Sportif Kouba',
-  },
-  {
-    id: 'evt_4',
-    title: 'Sortie Nature et Randonnée au Jardin d\'Essai',
-    category: 'Loisirs',
-    distanceM: 3400,
-    dateTs: 1751760000,
-    slotsLeft: 15,
-    establishmentName: 'Maison de Jeunes El Harrach',
-  },
-  {
-    id: 'evt_5',
-    title: 'Club de Théâtre et Expression Artistique',
-    category: 'Culture',
-    distanceM: 560,
-    dateTs: 1751846400,
-    slotsLeft: 1,
-    establishmentName: 'Maison de Jeunes Sidi M\'hamed',
-  },
-];
+import { HelloWave } from '@/components/hello-wave';
+import ParallaxScrollView from '@/components/parallax-scroll-view';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Link } from 'expo-router';
 
-const CATEGORIES = ['Tout', 'Sport', 'Culture', 'Formation', 'Loisirs'];
-
-export default function OpportunitiesScreen() {
-  const [activeCategory, setActiveCategory] = useState('Tout');
-
-  const filteredData =
-    activeCategory === 'Tout'
-      ? MOCK_OPPORTUNITIES
-      : MOCK_OPPORTUNITIES.filter((o) => o.category === activeCategory);
-
-  const handlePress = useCallback((id: string) => {
-    console.log('Navigate to opportunity:', id);
-  }, []);
-
-  const renderItem = useCallback(
-    ({ item }: { item: OpportunityData }) => (
-      <OpportunityItem opportunity={item} onPress={handlePress} />
-    ),
-    [handlePress]
-  );
-
+export default function HomeScreen() {
   return (
-    <View style={styles.container}>
-      <FlatList
-        horizontal
-        data={CATEGORIES}
-        keyExtractor={(item) => item}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chips}
-        renderItem={({ item }) => (
-          <Chip
-            label={item}
-            selected={activeCategory === item}
-            onPress={() => setActiveCategory(item)}
-          />
-        )}
-      />
-      <FlatList
-        data={filteredData}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-      />
-    </View>
+    <ParallaxScrollView
+      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
+      headerImage={
+        <Image
+          source={require('@/assets/images/partial-react-logo.png')}
+          style={styles.reactLogo}
+        />
+      }>
+      <ThemedView style={styles.titleContainer}>
+        <ThemedText type="title">Welcome!</ThemedText>
+        <HelloWave />
+      </ThemedView>
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
+        <ThemedText>
+          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
+          Press{' '}
+          <ThemedText type="defaultSemiBold">
+            {Platform.select({
+              ios: 'cmd + d',
+              android: 'cmd + m',
+              web: 'F12',
+            })}
+          </ThemedText>{' '}
+          to open developer tools.
+        </ThemedText>
+      </ThemedView>
+      <ThemedView style={styles.stepContainer}>
+        <Link href="/modal">
+          <Link.Trigger>
+            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
+          </Link.Trigger>
+          <Link.Preview />
+          <Link.Menu>
+            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
+            <Link.MenuAction
+              title="Share"
+              icon="square.and.arrow.up"
+              onPress={() => alert('Share pressed')}
+            />
+            <Link.Menu title="More" icon="ellipsis">
+              <Link.MenuAction
+                title="Delete"
+                icon="trash"
+                destructive
+                onPress={() => alert('Delete pressed')}
+              />
+            </Link.Menu>
+          </Link.Menu>
+        </Link>
+
+        <ThemedText>
+          {`Tap the Explore tab to learn more about what's included in this starter app.`}
+        </ThemedText>
+      </ThemedView>
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
+        <ThemedText>
+          {`When you're ready, run `}
+          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
+          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
+          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
+          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
+        </ThemedText>
+      </ThemedView>
+    </ParallaxScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.canvasSoft,
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  chips: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
+  stepContainer: {
+    gap: 8,
+    marginBottom: 8,
   },
-  list: {
-    paddingBottom: spacing.xl,
+  reactLogo: {
+    height: 178,
+    width: 290,
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
   },
 });

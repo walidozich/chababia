@@ -1,103 +1,101 @@
-import { View, Text, StyleSheet } from 'react-native';
-import QRCode from 'react-native-qrcode-svg';
+import { View, Text, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { colors, typography, spacing, rounded } from '../design-system';
-import { Card } from './Card';
+import { Badge } from './Badge';
 
-type TicketCardProps = {
+interface TicketCardProps {
   rsvpId: string;
-  eventCode: string;
-  qrPayload: string;
   eventTitle: string;
-  eventDate: string;
-  establishmentName: string;
-  isPast?: boolean;
-  onCancel?: () => void;
-};
+  eventCode: string;
+  date: string;
+  address: string;
+  qrCode?: React.ReactNode;
+  onPress: (rsvpId: string) => void;
+  accessibilityLabel: string;
+  style?: StyleProp<ViewStyle>;
+}
 
 export function TicketCard({
   rsvpId,
-  eventCode,
-  qrPayload,
   eventTitle,
-  eventDate,
-  establishmentName,
-  isPast = false,
+  eventCode,
+  date,
+  address,
+  qrCode,
+  onPress,
+  accessibilityLabel,
+  style,
 }: TicketCardProps) {
   return (
-    <Card variant={isPast ? 'featureSage' : 'content'} style={styles.container}>
-      <Text style={styles.title} numberOfLines={2}>
-        {eventTitle}
-      </Text>
-      <Text style={styles.code} numberOfLines={1}>
-        {eventCode}
-      </Text>
-
-      <View style={styles.qrContainer}>
-        <QRCode
-          value={qrPayload}
-          size={160}
-          backgroundColor={colors.canvas}
-          color={colors.ink}
-          quietZone={8}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={() => onPress(rsvpId)}
+      style={({ pressed }) => [
+        styles.container,
+        pressed && styles.pressed,
+        style,
+      ]}
+    >
+      <View style={styles.header}>
+        <Badge
+          label={eventCode}
+          variant="positive"
+          accessibilityLabel={`Code événement : ${eventCode}`}
         />
       </View>
 
-      <Text style={styles.id} numberOfLines={1}>
-        {rsvpId}
+      <Text style={styles.title} maxFontSizeMultiplier={1.3} numberOfLines={2}>
+        {eventTitle}
       </Text>
 
-      <View style={styles.footer}>
-        <Text style={styles.meta} numberOfLines={1}>
-          {establishmentName}
+      <View style={styles.details}>
+        <Text style={styles.date} maxFontSizeMultiplier={1.3} numberOfLines={1}>
+          {date}
         </Text>
-        <Text style={styles.date} numberOfLines={1}>
-          {eventDate}
+        <Text style={styles.address} maxFontSizeMultiplier={1.3} numberOfLines={1}>
+          {address}
         </Text>
       </View>
-    </Card>
+
+      {qrCode ? <View style={styles.qrContainer}>{qrCode}</View> : null}
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: spacing.md,
-    alignItems: 'center',
+    backgroundColor: colors.canvas,
+    borderWidth: 1,
+    borderColor: colors.ink,
+    borderRadius: rounded.xl,
+    padding: spacing.xl,
+    marginHorizontal: spacing.xl,
+    marginVertical: spacing.sm,
+  },
+  pressed: {
+    opacity: 0.8,
+  },
+  header: {
+    marginBottom: spacing.sm,
   },
   title: {
-    ...typography.bodyMdStrong,
+    ...typography['display-xs'],
     color: colors.ink,
-    textAlign: 'center',
+    marginBottom: spacing.md,
   },
-  code: {
-    ...typography.caption,
-    color: colors.positive,
-    backgroundColor: colors.primaryPale,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xxs,
-    borderRadius: rounded.pill,
-    overflow: 'hidden',
-  },
-  qrContainer: {
-    padding: spacing.md,
-    backgroundColor: colors.canvas,
-    borderRadius: rounded.md,
-  },
-  id: {
-    ...typography.caption,
-    color: colors.mute,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  meta: {
-    ...typography.bodySm,
-    color: colors.body,
-    flex: 1,
+  details: {
+    gap: spacing.xs,
   },
   date: {
-    ...typography.bodySm,
-    color: colors.mute,
+    ...typography['body-sm-strong'],
+    color: colors.ink,
+  },
+  address: {
+    ...typography['body-sm'],
+    color: colors.ink,
+  },
+  qrContainer: {
+    alignItems: 'center',
+    marginTop: spacing.lg,
   },
 });

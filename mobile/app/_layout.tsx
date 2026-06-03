@@ -1,42 +1,41 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet } from 'react-native';
-import { colors } from '../src/design-system';
+import * as Font from 'expo-font';
+import { fontAssets, colors } from '@/src/design-system';
+import 'react-native-reanimated';
+
+export const unstable_settings = {
+  anchor: '(tabs)',
+};
 
 export default function RootLayout() {
+  const [fontsLoaded] = Font.useFonts(fontAssets);
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
-    <View style={styles.root}>
-      <StatusBar style="dark" />
+    <>
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: colors.canvasSoft },
+          contentStyle: { backgroundColor: colors.canvas },
         }}
       >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
-          name="onboarding/language"
-          options={{ animation: 'fade' }}
-        />
-        <Stack.Screen
-          name="onboarding/interests"
-          options={{ animation: 'fade' }}
-        />
-        <Stack.Screen
-          name="onboarding/radius"
-          options={{ animation: 'fade' }}
-        />
-        <Stack.Screen
-          name="opportunity/[id]"
-          options={{ animation: 'slide_from_right' }}
+          name="modal"
+          options={{
+            presentation: 'modal',
+            title: 'Modal',
+            headerShown: true,
+            headerStyle: { backgroundColor: colors.canvas },
+            headerTintColor: colors.ink,
+          }}
         />
       </Stack>
-    </View>
+      <StatusBar style="dark" />
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-});
