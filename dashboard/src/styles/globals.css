@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 60 33% 97%;
+    --foreground: 90 6% 10%;
+    --card: 75 12% 93%;
+    --card-foreground: 90 6% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 90 6% 10%;
+    --primary: 98 100% 21%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 140 3% 36%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 75 15% 96%;
+    --muted-foreground: 95 7% 26%;
+    --accent: 75 12% 93%;
+    --accent-foreground: 90 6% 10%;
+    --destructive: 0 74% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 90 18% 74%;
+    --input: 90 18% 74%;
+    --ring: 98 100% 21%;
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Arabic / Tamazight content fields only */
+  [dir="rtl"],
+  [dir="auto"] {
+    font-feature-settings: "rlig" 1, "calt" 1, "kern" 1;
+  }
+}
+
+@layer utilities {
+  /* Bento grid helpers */
+  .bento-card {
+    @apply rounded-xl bg-surface-container p-xl;
+  }
+
+  .bento-card-elevated {
+    @apply rounded-xl bg-surface-container-high p-xl;
+  }
+
+  /* Typography shortcuts */
+  .text-display-xl {
+    font-size: 64px;
+    line-height: 1.1;
+    letter-spacing: -0.04em;
+    font-weight: 900;
+  }
+
+  .text-display-lg {
+    font-size: 48px;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    font-weight: 900;
+  }
+
+  @media (max-width: 768px) {
+    .text-display-lg {
+      font-size: 32px;
+      letter-spacing: -0.02em;
+    }
+  }
+}

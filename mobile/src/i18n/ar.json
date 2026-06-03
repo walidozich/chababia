@@ -1,0 +1,73 @@
+{
+  "onboarding": {
+    "language": {
+      "title": "مرحباً بك في شابابيا",
+      "subtitle": "اختر لغتك",
+      "continue": "متابعة"
+    },
+    "interests": {
+      "title": "ما الذي يثير اهتمامك؟",
+      "subtitle": "اختر مجال اهتمام واحد على الأقل",
+      "sport": "رياضة",
+      "culture": "ثقافة",
+      "formation": "تكوين",
+      "loisirs": "ترفيه",
+      "musique": "موسيقى",
+      "benevolat": "تطوع",
+      "continue": "متابعة",
+      "select_at_least_one": "اختر اهتماماً واحداً على الأقل"
+    },
+    "radius": {
+      "title": "إلى أي مدى تريد البحث؟",
+      "subtitle": "نحتاج إلى موقعك لنعرض لك الفرص القريبة",
+      "km1": "1 كم",
+      "km2": "2 كم",
+      "km5": "5 كم",
+      "location_explanation": "يُستخدم موقعك مرة واحدة فقط لتصفية النتائج. لا يُرسل أبداً إلى خادم خارجي.",
+      "continue": "ابدأ",
+      "permission_denied": "بدون الموقع، لا يمكننا الترتيب حسب المسافة. يمكنك البحث يدوياً."
+    }
+  },
+  "discovery": {
+    "title": "الفرص",
+    "search_placeholder": "بحث...",
+    "no_results": "لم يتم العثور على فرص",
+    "pull_to_refresh": "اسحب للتحديث",
+    "offline_banner": "بيانات {{date}} — غير متصل"
+  },
+  "detail": {
+    "rsvp_button": "سأشارك",
+    "rsvp_cancel": "إلغاء التسجيل",
+    "rsvp_confirmed": "تم تأكيد التسجيل!",
+    "open_in_maps": "فتح في الخرائط",
+    "places_left": "أماكن متبقية",
+    "address": "العنوان",
+    "contact": "اتصال",
+    "description": "الوصف",
+    "date": "التاريخ"
+  },
+  "tickets": {
+    "title": "تذاكري",
+    "empty_state": "لا توجد تذاكر حالياً.\nسجّل في فرصة!",
+    "upcoming": "القادمة",
+    "past": "السابقة",
+    "cancel": "إلغاء",
+    "cancelled": "ملغى"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "language": "اللغة",
+    "radius": "نطاق البحث",
+    "interests": "مجالات الاهتمام",
+    "about": "حول"
+  },
+  "common": {
+    "cancel": "إلغاء",
+    "confirm": "تأكيد",
+    "back": "رجوع",
+    "loading": "جار التحميل...",
+    "error": "حدث خطأ",
+    "retry": "إعادة المحاولة",
+    "close": "إغلاق"
+  }
+}

@@ -4,10 +4,6 @@ import * as Font from 'expo-font';
 import { fontAssets, colors } from '@/src/design-system';
 import 'react-native-reanimated';
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
-
 export default function RootLayout() {
   const [fontsLoaded] = Font.useFonts(fontAssets);
 
@@ -23,6 +19,8 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: colors.canvas },
         }}
       >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="modal"

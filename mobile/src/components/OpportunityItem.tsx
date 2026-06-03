@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { View, Text, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { colors, typography, spacing, rounded } from '../design-system';
 import { Badge } from './Badge';
@@ -15,7 +16,7 @@ interface OpportunityItemProps {
   style?: StyleProp<ViewStyle>;
 }
 
-export function OpportunityItem({
+export const OpportunityItem = memo(function OpportunityItem({
   id,
   title,
   category,
@@ -67,7 +68,7 @@ export function OpportunityItem({
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
