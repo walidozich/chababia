@@ -14,8 +14,20 @@
       "loisirs": "Loisirs",
       "musique": "Musique",
       "benevolat": "Bénévolat",
+      "ecologie": "Écologie",
       "continue": "Continuer",
       "select_at_least_one": "Sélectionne au moins un intérêt"
+    },
+    "profile": {
+      "title": "Dis-nous qui tu es",
+      "subtitle": "Ces infos nous aident à personnaliser ton expérience.",
+      "firstname_label": "Prénom",
+      "firstname_placeholder": "Ton prénom",
+      "lastname_label": "Nom",
+      "lastname_placeholder": "Ton nom",
+      "birthdate_label": "Date de naissance",
+      "birthdate_placeholder": "JJ/MM/AAAA",
+      "continue": "Continuer"
     },
     "radius": {
       "title": "Jusqu'où veux-tu chercher ?",
@@ -26,6 +38,34 @@
       "location_explanation": "Ta position n'est utilisée qu'une seule fois pour filtrer les résultats. Elle n'est jamais envoyée à un serveur tiers.",
       "continue": "Commencer",
       "permission_denied": "Sans la localisation, on ne peut pas trier par distance. Tu pourras chercher manuellement."
+    },
+    "auth": {
+      "login": {
+        "title": "Connexion",
+        "subtitle": "Content de te revoir sur le hub communautaire.",
+        "email_label": "Email",
+        "email_placeholder": "nom@exemple.com",
+        "password_label": "Mot de passe",
+        "password_placeholder": "Entre ton mot de passe",
+        "forgot_password": "Mot de passe oublié ?",
+        "cta": "Se connecter",
+        "or": "OU",
+        "no_account": "Nouveau ici ?",
+        "create_account": "Créer un compte"
+      },
+      "register": {
+        "title": "Créer un compte",
+        "subtitle": "Rejoins le hub communautaire dès aujourd'hui.",
+        "email_label": "Email",
+        "email_placeholder": "nom@exemple.com",
+        "password_label": "Mot de passe",
+        "password_placeholder": "Choisis un mot de passe",
+        "confirm_password_label": "Confirmer le mot de passe",
+        "confirm_password_placeholder": "Répète ton mot de passe",
+        "cta": "S'inscrire",
+        "have_account": "Déjà un compte ?",
+        "login": "Se connecter"
+      }
     }
   },
   "discovery": {
@@ -33,7 +73,17 @@
     "search_placeholder": "Rechercher...",
     "no_results": "Aucune opportunité trouvée",
     "pull_to_refresh": "Tirer pour actualiser",
-    "offline_banner": "Données du {{date}} — hors connexion"
+    "offline_banner": "Données du {{date}} — hors connexion",
+    "like": "Aimer",
+    "dislike": "Passer",
+    "swipe_hint": "Glisse à gauche pour passer et à droite pour aimer.",
+    "no_more": "Tu as vu toutes les opportunités",
+    "restart": "Recommencer",
+    "location_label": "Lieu",
+    "distance_label": "Distance",
+    "date_label": "Quand",
+    "category_label": "Catégorie",
+    "places_left_label": "Places"
   },
   "detail": {
     "rsvp_button": "Je participe",

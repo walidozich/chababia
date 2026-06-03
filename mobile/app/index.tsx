@@ -9,7 +9,7 @@ export default function Index() {
   useEffect(() => {
     if (__DEV__) {
       removePref(keys.onboardingDone).then(() => {
-        router.replace('/onboarding/language');
+        router.replace('/onboarding/language' as never);
       });
       return;
     }
@@ -24,7 +24,7 @@ export default function Index() {
         if (done) {
           router.replace('/(tabs)');
         } else {
-          router.replace('/onboarding/language');
+          router.replace('/onboarding/language' as never);
         }
       });
     });

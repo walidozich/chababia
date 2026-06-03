@@ -1,30 +1,21 @@
-import { View, Text, StyleSheet, I18nManager } from 'react-native';
+import { View, StyleSheet, I18nManager } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { OnboardingFrame } from '@/src/components/OnboardingFrame';
 import { Button } from '@/src/components/Button';
-import { typography, spacing, colors } from '@/src/design-system';
+import { colors, spacing } from '@/src/design-system';
 import { availableLocales, type Locale } from '@/src/i18n';
 import { useLocale } from '@/src/hooks/useLocale';
+import { t } from '@/src/i18n';
 
 export default function LanguageScreen() {
   const { locale, setLocale } = useLocale();
-  const t = (_locale: Locale) => ({
-    title:
-      _locale === 'fr'
-        ? 'Bienvenue sur Chababia'
-        : _locale === 'ar'
-          ? 'مرحباً بك في شابابيا'
-          : 'ⴰⵏⵙⵓⴼ ⵖⴻⵔ Chababia',
-    subtitle:
-      _locale === 'fr'
-        ? 'Choisis ta langue'
-        : _locale === 'ar'
-          ? 'اختر لغتك'
-          : 'ⵙⵟⴼ ⵜⵓⵜⵍⴰⵢⵜ ⵏⵏⴻⴽ',
-    continue: _locale === 'fr' ? 'Continuer' : _locale === 'ar' ? 'متابعة' : 'ⴽⴻⵎⵎⴻⵍ',
-  });
 
-  const texts = t(locale);
+  const texts = {
+    title: t(locale, 'onboarding.language.title'),
+    subtitle: t(locale, 'onboarding.language.subtitle'),
+    continue: t(locale, 'onboarding.language.continue'),
+  };
 
   const handleSelectLanguage = async (code: Locale) => {
     await setLocale(code);
@@ -38,21 +29,27 @@ export default function LanguageScreen() {
   };
 
   const handleContinue = () => {
-    router.push('/onboarding/interests');
+    router.push('/onboarding/auth');
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title} maxFontSizeMultiplier={1.3} numberOfLines={2}>
-            {texts.title}
-          </Text>
-          <Text style={styles.subtitle} maxFontSizeMultiplier={1.3} numberOfLines={1}>
-            {texts.subtitle}
-          </Text>
-        </View>
-
+    <SafeAreaView style={styles.safeArea}>
+      <OnboardingFrame
+        step={1}
+        totalSteps={4}
+        title={texts.title}
+        subtitle={texts.subtitle}
+        accessibilityLabel="Onboarding langue"
+        hideProgress
+        footer={
+          <Button
+            title={texts.continue}
+            variant="primary"
+            accessibilityLabel={texts.continue}
+            onPress={handleContinue}
+          />
+        }
+      >
         <View style={styles.buttons}>
           {availableLocales.map(({ code, nativeLabel }) => (
             <Button
@@ -65,49 +62,21 @@ export default function LanguageScreen() {
             />
           ))}
         </View>
-      </View>
-
-      <View style={styles.footer}>
-        <Button
-          title={texts.continue}
-          variant="primary"
-          accessibilityLabel={texts.continue}
-          onPress={handleContinue}
-        />
-      </View>
+      </OnboardingFrame>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: colors.canvas,
   },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-  },
-  header: {
-    marginBottom: spacing['3xl'],
-  },
-  title: {
-    ...typography['display-sm'],
-    color: colors.ink,
-    marginBottom: spacing.md,
-  },
-  subtitle: {
-    ...typography['body-lg'],
-    color: colors.ink,
-  },
   buttons: {
-    gap: spacing.lg,
+    gap: spacing.md,
+    marginTop: spacing.sm,
   },
   langButton: {
     alignSelf: 'stretch',
-  },
-  footer: {
-    padding: spacing.xl,
   },
 });

@@ -10,6 +10,9 @@ export default function OnboardingLayout() {
         animation: 'fade',
       }}
     >
+      <Stack.Screen name="auth" />
+      <Stack.Screen name="register" />
+      <Stack.Screen name="profile" />
       <Stack.Screen name="language" />
       <Stack.Screen name="interests" />
       <Stack.Screen name="radius" />

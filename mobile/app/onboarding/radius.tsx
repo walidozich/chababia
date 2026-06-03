@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
+import { OnboardingFrame } from '@/src/components/OnboardingFrame';
 import { Button } from '@/src/components/Button';
-import { Chip } from '@/src/components/Chip';
-import { typography, spacing, colors } from '@/src/design-system';
+import { colors, spacing, typography } from '@/src/design-system';
 import { useLocale } from '@/src/hooks/useLocale';
 import { setPref, keys } from '@/src/storage/prefs';
+import { t } from '@/src/i18n';
 
 const RADIUS_OPTIONS = [
   { value: 1000, fr: '1 km', ar: '1 كم', tzm: '1 ⴽⵎ' },
@@ -17,14 +18,14 @@ const RADIUS_OPTIONS = [
 
 export default function RadiusScreen() {
   const { locale } = useLocale();
-  const [radius, setRadius] = useState(5000);
+  const [radius, setRadius] = useState(1000);
   const [loading, setLoading] = useState(false);
 
   const texts = {
-    title: locale === 'fr' ? "Jusqu'où veux-tu chercher ?" : locale === 'ar' ? 'إلى أي مدى تريد البحث؟' : 'ⵖⴰⵔ ⴰⵏⴷⴰ ⵜⴻⵅⵙⴻⴷ ⴰⴷ ⵜⵇⴻⵍⵍⴱⴻⴷ?',
-    subtitle: locale === 'fr' ? "On a besoin de ta position pour te montrer les opportunités à proximité" : locale === 'ar' ? 'نحتاج إلى موقعك لنعرض لك الفرص القريبة' : 'ⵏⴻⵃⵡⴰⵊ ⴰⴷⵉⵖⴻⵏ ⵏⵏⴻⴽ ⴰⴽⴻⵏ ⴰⴷ ⴰⴽ ⵏⵎⴻⵍ ⵜⵉⵖⴻⵍⵍⴰⵙⵉⵏ ⵢⴻⵇⵕⴰⴱⴻⵏ',
-    explanation: locale === 'fr' ? "Ta position n'est utilisée qu'une seule fois pour filtrer les résultats. Elle n'est jamais envoyée à un serveur tiers." : locale === 'ar' ? 'يُستخدم موقعك مرة واحدة فقط لتصفية النتائج. لا يُرسل أبداً إلى خادم خارجي.' : 'ⴰⴷⵉⵖⴻⵏ ⵏⵏⴻⴽ ⵢⴻⵙⵙⴻⵇⴷⴰⵛ ⵢⵉⵡⴻⵏ ⵏ ⵡⴻⴱⵔⵉⴷ ⴽⴰⵏ ⵉ ⵓⵙⵉⵣⴷⵉ ⵏ ⵉⴳⵎⴰⴹ.',
-    start: locale === 'fr' ? 'Commencer' : locale === 'ar' ? 'ابدأ' : 'ⴱⴷⵓ',
+    title: t(locale, 'onboarding.radius.title'),
+    subtitle: t(locale, 'onboarding.radius.subtitle'),
+    explanation: t(locale, 'onboarding.radius.location_explanation'),
+    start: t(locale, 'onboarding.radius.continue'),
   };
 
   const getLabel = (opt: (typeof RADIUS_OPTIONS)[number]) => {
@@ -39,12 +40,10 @@ export default function RadiusScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
-        // Get location once, cache for 24h
         await Location.getCurrentPositionAsync({});
       }
-      // Always proceed — fallback to manual search if denied
     } catch {
-      // Location unavailable — proceed anyway
+      // Continue without location.
     }
 
     await setPref(keys.radius, radius);
@@ -54,88 +53,107 @@ export default function RadiusScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title} maxFontSizeMultiplier={1.3} numberOfLines={2}>
-            {texts.title}
-          </Text>
-          <Text style={styles.subtitle} maxFontSizeMultiplier={1.3} numberOfLines={2}>
-            {texts.subtitle}
-          </Text>
-        </View>
-
-        <View style={styles.options}>
-          {RADIUS_OPTIONS.map((opt) => (
-            <Chip
-              key={opt.value}
-              label={getLabel(opt)}
-              selected={radius === opt.value}
-              onPress={() => setRadius(opt.value)}
-              accessibilityLabel={`${getLabel(opt)} ${radius === opt.value ? 'sélectionné' : ''}`}
-            />
-          ))}
+    <SafeAreaView style={styles.safeArea}>
+      <OnboardingFrame
+        step={4}
+        totalSteps={4}
+        title={texts.title}
+        subtitle={texts.subtitle}
+        accessibilityLabel="Onboarding rayon"
+        onBack={() => router.back()}
+        footer={
+          <Button
+            title={loading ? '...' : texts.start}
+            variant="primary"
+            accessibilityLabel={texts.start}
+            onPress={handleStart}
+            disabled={loading}
+          />
+        }
+      >
+        <View style={styles.radiusPill}>
+          {RADIUS_OPTIONS.map((option, index) => {
+            const active = radius === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                accessibilityLabel={getLabel(option)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                onPress={() => setRadius(option.value)}
+                style={({ pressed }) => [
+                  styles.radiusOption,
+                  index !== 0 && styles.radiusDivider,
+                  active && styles.radiusActive,
+                  pressed && styles.radiusPressed,
+                ]}
+              >
+                <Text style={[styles.radiusLabel, active ? styles.radiusLabelActive : styles.radiusLabelInactive]}>
+                  {getLabel(option)}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         <View style={styles.explanationCard}>
-          <Text style={styles.explanation} maxFontSizeMultiplier={1.3} numberOfLines={4}>
+          <Text style={styles.explanation} maxFontSizeMultiplier={1.2}>
             {texts.explanation}
           </Text>
         </View>
-      </View>
-
-      <View style={styles.footer}>
-        <Button
-          title={loading ? '...' : texts.start}
-          variant="primary"
-          accessibilityLabel={texts.start}
-          onPress={handleStart}
-          disabled={loading}
-        />
-      </View>
+      </OnboardingFrame>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: colors.canvas,
   },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-  },
-  header: {
-    marginBottom: spacing['3xl'],
-  },
-  title: {
-    ...typography['display-sm'],
-    color: colors.ink,
-    marginBottom: spacing.md,
-  },
-  subtitle: {
-    ...typography['body-lg'],
-    color: colors.ink,
-  },
-  options: {
+  radiusPill: {
     flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
+    borderRadius: 9999,
+    backgroundColor: '#f5f2e9',
+    borderWidth: 1,
+    borderColor: '#d8d3c5',
+    overflow: 'hidden',
+    marginBottom: spacing.sm,
+  },
+  radiusOption: {
+    flex: 1,
+    minHeight: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radiusDivider: {
+    borderLeftWidth: 1,
+    borderLeftColor: '#e4dfd2',
+  },
+  radiusActive: {
+    backgroundColor: colors.primaryPale,
+  },
+  radiusPressed: {
+    opacity: 0.92,
+  },
+  radiusLabel: {
+    ...typography['body-md-strong'],
+  },
+  radiusLabelActive: {
+    color: colors.ink,
+  },
+  radiusLabelInactive: {
+    color: colors.body,
   },
   explanationCard: {
     backgroundColor: colors.canvas,
     borderWidth: 1,
-    borderColor: colors.ink,
-    borderRadius: spacing.lg,
+    borderColor: '#e0ddd2',
+    borderRadius: 18,
     padding: spacing.lg,
   },
   explanation: {
     ...typography['body-sm'],
-    color: colors.ink,
-  },
-  footer: {
-    padding: spacing.xl,
+    color: colors.body,
   },
 });

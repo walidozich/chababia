@@ -30,7 +30,7 @@
     {
       "id": "evt_004",
       "title": "Sortie Nature",
-      "category": "loisirs",
+      "category": "musique",
       "date_ts": 1751760000,
       "distance_m": 4500,
       "slots_left": 25,
@@ -84,7 +84,7 @@
     {
       "id": "evt_010",
       "title": "Randonnée en Montagne",
-      "category": "loisirs",
+      "category": "musique",
       "date_ts": 1752278400,
       "distance_m": 8900,
       "slots_left": 15,
@@ -138,7 +138,7 @@
     {
       "id": "evt_016",
       "title": "Soirée Jeux de Société",
-      "category": "loisirs",
+      "category": "musique",
       "date_ts": 1752796800,
       "distance_m": 750,
       "slots_left": 20,

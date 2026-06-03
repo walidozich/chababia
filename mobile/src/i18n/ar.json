@@ -14,8 +14,20 @@
       "loisirs": "ترفيه",
       "musique": "موسيقى",
       "benevolat": "تطوع",
+      "ecologie": "بيئة",
       "continue": "متابعة",
       "select_at_least_one": "اختر اهتماماً واحداً على الأقل"
+    },
+    "profile": {
+      "title": "أخبرنا من أنت",
+      "subtitle": "هذه المعلومات تساعدنا في تخصيص تجربتك.",
+      "firstname_label": "الاسم الأول",
+      "firstname_placeholder": "اسمك الأول",
+      "lastname_label": "اللقب",
+      "lastname_placeholder": "لقبك",
+      "birthdate_label": "تاريخ الميلاد",
+      "birthdate_placeholder": "يوم/شهر/سنة",
+      "continue": "متابعة"
     },
     "radius": {
       "title": "إلى أي مدى تريد البحث؟",
@@ -26,6 +38,34 @@
       "location_explanation": "يُستخدم موقعك مرة واحدة فقط لتصفية النتائج. لا يُرسل أبداً إلى خادم خارجي.",
       "continue": "ابدأ",
       "permission_denied": "بدون الموقع، لا يمكننا الترتيب حسب المسافة. يمكنك البحث يدوياً."
+    },
+    "auth": {
+      "login": {
+        "title": "تسجيل الدخول",
+        "subtitle": "سعيد بعودتك إلى المركز المجتمعي.",
+        "email_label": "البريد الإلكتروني",
+        "email_placeholder": "example@nom.com",
+        "password_label": "كلمة المرور",
+        "password_placeholder": "أدخل كلمة المرور",
+        "forgot_password": "نسيت كلمة المرور؟",
+        "cta": "تسجيل الدخول",
+        "or": "أو",
+        "no_account": "جديد هنا؟",
+        "create_account": "إنشاء حساب"
+      },
+      "register": {
+        "title": "إنشاء حساب",
+        "subtitle": "انضم إلى المركز المجتمعي اليوم.",
+        "email_label": "البريد الإلكتروني",
+        "email_placeholder": "example@nom.com",
+        "password_label": "كلمة المرور",
+        "password_placeholder": "اختر كلمة مرور",
+        "confirm_password_label": "تأكيد كلمة المرور",
+        "confirm_password_placeholder": "أعد كتابة كلمة المرور",
+        "cta": "التسجيل",
+        "have_account": "لديك حساب؟",
+        "login": "تسجيل الدخول"
+      }
     }
   },
   "discovery": {
@@ -33,7 +73,17 @@
     "search_placeholder": "بحث...",
     "no_results": "لم يتم العثور على فرص",
     "pull_to_refresh": "اسحب للتحديث",
-    "offline_banner": "بيانات {{date}} — غير متصل"
+    "offline_banner": "بيانات {{date}} — غير متصل",
+    "like": "إعجاب",
+    "dislike": "تخطي",
+    "swipe_hint": "اسحب إلى اليسار للتخطي وإلى اليمين للإعجاب.",
+    "no_more": "لقد شاهدت كل الفرص",
+    "restart": "ابدأ من جديد",
+    "location_label": "المكان",
+    "distance_label": "المسافة",
+    "date_label": "متى",
+    "category_label": "الفئة",
+    "places_left_label": "أماكن"
   },
   "detail": {
     "rsvp_button": "سأشارك",

@@ -14,8 +14,20 @@
       "loisirs": "ⴰⵙⵖⵉⵏⵣⵉ",
       "musique": "ⴰⵥⴰⵡⴰⵏ",
       "benevolat": "ⴰⵙⴻⵡⵡⴰⵚ",
+      "ecologie": "ⵜⴰⵡⵏⵏⴰⴹⵜ",
       "continue": "ⴽⴻⵎⵎⴻⵍ",
       "select_at_least_one": "ⵙⵟⴼ ⵢⵉⵡⴻⵏ ⵏ ⵡⴰⵏⴷⴰⵡ ⵏ ⵓⵎⴻⵖⵔⴰⴷ"
+    },
+    "profile": {
+      "title": "ⵎⴻⵍ ⴷ ⴰⵛⴽⵉⵏ",
+      "subtitle": "ⵉⵏⵖⵎⵉⵙⴻⵏ-ⴰ ⴰⵖ ⵄⴰⵡⵏⴻⵏ ⴰⴷ ⵏⵙⵖⵉⵡⴻⵙ ⵜⴰⵎⵓⵔⴰⵏⵉⵜ ⵏⵏⴻⴽ.",
+      "firstname_label": "ⵉⵙⴻⵎ",
+      "firstname_placeholder": "ⵉⵙⴻⵎ ⵏⵏⴻⴽ",
+      "lastname_label": "ⴰⵙⵇⵇⵉⵎ",
+      "lastname_placeholder": "ⴰⵙⵇⵇⵉⵎ ⵏⵏⴻⴽ",
+      "birthdate_label": "ⴰⵣⴻⵎⵣ ⵏ ⵜⵍⴰⵍⵉⵜ",
+      "birthdate_placeholder": "ⴰⵙⵙ/ⴰⵢⵢⵓⵔ/ⴰⵙⴳⴰⵙ",
+      "continue": "ⴽⴻⵎⵎⴻⵍ"
     },
     "radius": {
       "title": "ⵖⴰⵔ ⴰⵏⴷⴰ ⵜⴻⵅⵙⴻⴷ ⴰⴷ ⵜⵇⴻⵍⵍⴱⴻⴷ?",
@@ -26,6 +38,34 @@
       "location_explanation": "ⴰⴷⵉⵖⴻⵏ ⵏⵏⴻⴽ ⵢⴻⵙⵙⴻⵇⴷⴰⵛ ⵢⵉⵡⴻⵏ ⵏ ⵡⴻⴱⵔⵉⴷ ⴽⴰⵏ ⵉ ⵓⵙⵉⵣⴷⵉ ⵏ ⵉⴳⵎⴰⴹ. ⵡⴻⵔ ⵉⵣⵉⵏ ⵢⴻⵜⵡⴰⵣⵏⴻⵏ ⵖⴻⵔ ⵢⵉⵡⴻⵏ ⵏ ⵓⵇⴷⴰⵛ ⵏ ⴱⴻⵕⵕⴰ.",
       "continue": "ⴱⴷⵓ",
       "permission_denied": "ⵎⴰⵛⵉ ⴰⴷⵉⵖⴻⵏ, ⵓⵔ ⵏⴻⵣⵎⵉⵔ ⴰⴷ ⵏⵙⵉⵣⴷⴻⴳ ⵙ ⵓⴱⵄⴰⴷ. ⵜⴻⵣⵎⴻⵔⴻⴷ ⴰⴷ ⵜⵇⴻⵍⵍⴱⴻⴷ ⵙ ⵓⴼⵓⵙ."
+    },
+    "auth": {
+      "login": {
+        "title": "ⴰⴷ ⴽⴻⵛⵎⴻⴷ",
+        "subtitle": "ⴰⵏⵙⵓⴼ ⵖⴻⵔ ⵡⴰⵎⵎⴰⵙ ⵏ ⵜⵎⴰⵜⴰⵔⵜ.",
+        "email_label": "ⵉⵎⴰⵢⵍ",
+        "email_placeholder": "example@nom.com",
+        "password_label": "ⵜⴰⴳⵓⵔⴰⵢⵜ",
+        "password_placeholder": "ⵙⴻⴽⵛⴻⵎ ⵜⴰⴳⵓⵔⴰⵢⵜ",
+        "forgot_password": "ⵜⴻⵜⵜⵓⴷ ⵜⴰⴳⵓⵔⴰⵢⵜ?",
+        "cta": "ⴰⴷ ⴽⴻⵛⵎⴻⴷ",
+        "or": "ⵏⴻⵖ",
+        "no_account": "ⴰⵎⴰⵢⵏⵓ ⴷⴰ?",
+        "create_account": "ⵙⵏⵓⵍⴼⵓ ⴰⵎⵉⴹⴰⵏ"
+      },
+      "register": {
+        "title": "ⵙⵏⵓⵍⴼⵓ ⴰⵎⵉⴹⴰⵏ",
+        "subtitle": "ⴷⵓⴽⴻⵍ ⵖⴻⵔ ⵡⴰⵎⵎⴰⵙ ⵏ ⵜⵎⴰⵜⴰⵔⵜ ⴰⵙⵙⴰ.",
+        "email_label": "ⵉⵎⴰⵢⵍ",
+        "email_placeholder": "example@nom.com",
+        "password_label": "ⵜⴰⴳⵓⵔⴰⵢⵜ",
+        "password_placeholder": "ⵙⵟⴼ ⵜⴰⴳⵓⵔⴰⵢⵜ",
+        "confirm_password_label": "ⵙⴻⵏⵜⴻⵎ ⵜⴰⴳⵓⵔⴰⵢⵜ",
+        "confirm_password_placeholder": "ⵄⴰⵡⴻⴷ ⴰⵔⵓ ⵜⴰⴳⵓⵔⴰⵢⵜ",
+        "cta": "ⵙⴻⵇⴻⵔ",
+        "have_account": "ⵖⵓⵔⴻⴽ ⴰⵎⵉⴹⴰⵏ?",
+        "login": "ⴰⴷ ⴽⴻⵛⵎⴻⴷ"
+      }
     }
   },
   "discovery": {
@@ -33,7 +73,17 @@
     "search_placeholder": "ⵇⴻⵍⵍⴻⴱ...",
     "no_results": "ⵓⵍⴰⵛ ⵜⵉⵖⴻⵍⵍⴰⵙⵉⵏ ⵢⴻⵜⵡⴰⴼⴻⵏ",
     "pull_to_refresh": "ⵊⴻⴱⴻⴷ ⵉ ⵓⵙⵎⴰⵢⵏⵓ",
-    "offline_banner": "ⵉⵙⴻⴼⴽⴰ ⵏ {{date}} — ⵎⴰⵛⵉ ⵙ ⵜⵓⵇⵇⵏⴰ"
+    "offline_banner": "ⵉⵙⴻⴼⴽⴰ ⵏ {{date}} — ⵎⴰⵛⵉ ⵙ ⵜⵓⵇⵇⵏⴰ",
+    "like": "ⴰⵏⴻⵄⵊⴻⴱ",
+    "dislike": "ⵜⴻⵥⵔⵉ",
+    "swipe_hint": "ⵊⴻⴱⴻⴷ ⵖⴻⵔ ⵜⴰⵥⵉⵖⵉⵜ ⵉ ⵜⴻⵥⵔⵉ ⴷ ⵖⴻⵔ ⴰⵢⴰⴼⴰ ⵉ ⵜⴰⵏⴻⵄⵊⴻⴱ.",
+    "no_more": "ⵜⴻⵡⵍⵉⴷ ⴽⵓⵍⵍⵓ ⵜⵉⵖⴻⵍⵍⴰⵙⵉⵏ",
+    "restart": "ⴱⴷⵓ ⵙ ⵜⵢⵉⵏⵉ",
+    "location_label": "ⴰⴷⵉⵖⴻⵏ",
+    "distance_label": "ⴰⴱⵄⴰⴷ",
+    "date_label": "ⴰⵣⴻⵎⵣ",
+    "category_label": "ⴰⵏⴷⴰⵡ",
+    "places_left_label": "ⵉⴷⵉⴳⴻⵏ"
   },
   "detail": {
     "rsvp_button": "ⴰⴷ ⵜⴻⴽⴽⵉⵖ",

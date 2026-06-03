@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Linking, Platfor
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
+import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
+import { ArrowRight, Clock3, MapPin } from 'lucide-react-native';
 import { Button } from '@/src/components/Button';
-import { Card } from '@/src/components/Card';
 import { QrCode } from '@/src/components/QrCode';
 import { Badge } from '@/src/components/Badge';
 import { typography, spacing, colors } from '@/src/design-system';
@@ -59,7 +60,6 @@ export default function OpportunityDetailScreen() {
       });
 
       if (error || !data) {
-        // fallback to fixture data
         const fixture = detailFixture as OpportunityDetail;
         const list = opportunitiesFixture.data.find((o) => o.id === id);
         setDetail({
@@ -107,7 +107,7 @@ export default function OpportunityDetailScreen() {
             });
           }
         } catch {
-          // notifications not supported in Expo Go — silently ignore
+          // silently ignore
         }
       }
     }
@@ -143,10 +143,10 @@ export default function OpportunityDetailScreen() {
     description: locale === 'fr' ? 'Description' : locale === 'ar' ? 'الوصف' : 'ⴰⴳⵍⴰⵎ',
     address: locale === 'fr' ? 'Adresse' : locale === 'ar' ? 'العنوان' : 'ⵜⴰⵏⵙⴰ',
     contact: locale === 'fr' ? 'Contact' : locale === 'ar' ? 'اتصال' : 'ⴰⵏⵎⵉⵍⵉ',
-    date: locale === 'fr' ? 'Date' : locale === 'ar' ? 'التاريخ' : 'ⴰⵣⴻⵎⵣ',
+    date: locale === 'fr' ? 'Date et heure' : locale === 'ar' ? 'التاريخ والوقت' : 'ⴰⵣⴻⵎⵣ ⴷ ⵓⵙⵔⴰⴳ',
     open_maps: locale === 'fr' ? 'Ouvrir dans Maps' : locale === 'ar' ? 'فتح في الخرائط' : 'ⵍⴷⵉ ⴳ ⵍⴻⴽⵡⴰⵢⴻⵙ',
     rsvp: locale === 'fr' ? 'Je participe' : locale === 'ar' ? 'سأشارك' : 'ⴰⴷ ⵜⴻⴽⴽⵉⵖ',
-    rsvp_confirmed: locale === 'fr' ? 'Inscription confirmée !' : locale === 'ar' ? 'تم تأكيد التسجيل!' : 'ⵢⴻⵜⵜⵡⴰⵙⴻⵏⵜⴻⵎ ⵓⵙⴻⵇⴻⵔ!',
+    view_ticket: locale === 'fr' ? 'Voir mon billet' : locale === 'ar' ? 'عرض التذكرة' : 'ⵣⴻⵕ ⵜⵉⵇⵕⵉⵟ',
     back: locale === 'fr' ? 'Retour' : locale === 'ar' ? 'رجوع' : 'ⵖⴻⵔ ⴷⴻⴼⴼⵉⵔ',
   };
 
@@ -160,100 +160,152 @@ export default function OpportunityDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.backRow}>
-          <Button
-            title={texts.back}
-            variant="tertiary"
-            accessibilityLabel={texts.back}
-            onPress={() => router.back()}
-          />
-        </View>
-
-        <View style={styles.header}>
-          <Badge
-            label={detail.category}
-            variant="positive"
-            accessibilityLabel={`Catégorie : ${detail.category}`}
-          />
-          <Text style={styles.title} maxFontSizeMultiplier={1.3} numberOfLines={3}>
-            {detail.title}
-          </Text>
-        </View>
-
-        <View style={styles.meta}>
-          <Text style={styles.slots} maxFontSizeMultiplier={1.3} numberOfLines={1}>
-            {detail.slots_left > 0
-              ? `${detail.slots_left} ${locale === 'fr' ? 'places restantes' : locale === 'ar' ? 'أماكن متبقية' : 'ⵉⴷⵉⴳⴻⵏ ⵢⴻⴳⴳⴰⵎⴻⵏ'}`
-              : locale === 'fr'
-                ? 'Complet'
-                : locale === 'ar'
-                  ? 'مكتمل'
-                  : 'ⵢⴻⵛⵄⴰ'}
-          </Text>
-        </View>
-
-        <Card variant="content" style={styles.section}>
-          <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.3}>
-            {texts.date}
-          </Text>
-          <Text style={styles.sectionText} maxFontSizeMultiplier={1.3}>
-            {formatFullDate(detail.date_ts, locale)}
-          </Text>
-        </Card>
-
-        <Card variant="content" style={styles.section}>
-          <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.3}>
-            {texts.description}
-          </Text>
-          <Text style={styles.sectionText} maxFontSizeMultiplier={1.3}>
-            {detail.description}
-          </Text>
-        </Card>
-
-        <Card variant="content" style={styles.section}>
-          <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.3}>
-            {texts.address}
-          </Text>
-          <Text style={styles.sectionText} maxFontSizeMultiplier={1.3} numberOfLines={3}>
-            {detail.address}
-          </Text>
-          <View style={styles.mapButton}>
+      <View style={styles.topBar}>
+          <View style={styles.backButton}>
             <Button
-              title={texts.open_maps}
-              variant="tertiary"
-              accessibilityLabel={texts.open_maps}
-              onPress={handleOpenMaps}
+              title=""
+              variant="icon-circular"
+              accessibilityLabel={texts.back}
+              onPress={() => router.back()}
+            />
+            <ArrowRight size={18} color={colors.ink} strokeWidth={2.2} style={[styles.backIcon, { transform: [{ rotate: '180deg' }] }]} />
+          </View>
+        </View>
+
+        <View style={styles.heroCard}>
+          <View style={styles.categoryBadge}>
+            <Badge
+              label={detail.category}
+              variant="positive"
+              accessibilityLabel={`Catégorie : ${detail.category}`}
             />
           </View>
-        </Card>
+          <Text style={styles.heroTitle} maxFontSizeMultiplier={1.2} numberOfLines={4}>
+            {detail.title}
+          </Text>
+          <View style={styles.slotsRow}>
+            <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={colors.primary} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <Circle cx={9} cy={7} r={4} />
+                <Path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <Path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </Svg>
+            <Text style={styles.slotsText} maxFontSizeMultiplier={1.3}>
+              {detail.slots_left > 0
+                ? `${detail.slots_left} ${locale === 'fr' ? 'places restantes' : locale === 'ar' ? 'أماكن متبقية' : 'ⵉⴷⵉⴳⴻⵏ ⵢⴻⴳⴳⴰⵎⴻⵏ'}`
+                : locale === 'fr'
+                  ? 'Complet'
+                  : locale === 'ar'
+                    ? 'مكتمل'
+                    : 'ⵢⴻⵛⵄⴰ'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.infoSection}>
+          <View style={styles.infoCard}>
+            <View style={styles.infoIconShell}>
+              <Clock3 size={18} color={colors.inkDeep} strokeWidth={2} />
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel} maxFontSizeMultiplier={1.3}>
+                {texts.date}
+              </Text>
+              <Text style={styles.infoValue} maxFontSizeMultiplier={1.3}>
+                {formatFullDate(detail.date_ts, locale)}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.infoSection}>
+          <View style={styles.infoCard}>
+            <View style={styles.infoIconShell}>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.inkDeep} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <Path d="M14 2v6h6" />
+                <Line x1={16} y1={13} x2={8} y2={13} />
+                <Line x1={16} y1={17} x2={8} y2={17} />
+              </Svg>
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel} maxFontSizeMultiplier={1.3}>
+                {texts.description}
+              </Text>
+              <Text style={styles.infoValue} maxFontSizeMultiplier={1.3}>
+                {detail.description}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.infoSection}>
+          <View style={styles.infoCard}>
+            <View style={styles.infoIconShell}>
+              <MapPin size={18} color={colors.inkDeep} strokeWidth={2} />
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel} maxFontSizeMultiplier={1.3}>
+                {texts.address}
+              </Text>
+              <Text style={styles.infoValue} maxFontSizeMultiplier={1.3} numberOfLines={3}>
+                {detail.address}
+              </Text>
+              <View style={styles.mapButton}>
+                <Button
+                  title={texts.open_maps}
+                  variant="tertiary"
+                  accessibilityLabel={texts.open_maps}
+                  onPress={handleOpenMaps}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
 
         {detail.contact ? (
-          <Card variant="content" style={styles.section}>
-            <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.3}>
-              {texts.contact}
-            </Text>
-            <Text style={styles.sectionText} maxFontSizeMultiplier={1.3}>
-              {detail.contact}
-            </Text>
-          </Card>
+          <View style={styles.infoSection}>
+            <View style={styles.infoCard}>
+              <View style={styles.infoIconShell}>
+                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.inkDeep} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                </Svg>
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel} maxFontSizeMultiplier={1.3}>
+                  {texts.contact}
+                </Text>
+                <Text style={styles.infoValue} maxFontSizeMultiplier={1.3}>
+                  {detail.contact}
+                </Text>
+              </View>
+            </View>
+          </View>
         ) : null}
       </ScrollView>
 
       <View style={styles.footer}>
         {confirmed && confirmedTicket ? (
           <View style={styles.confirmedSection}>
-            <QrCode value={confirmedTicket.qrPayload} size={120} />
-            <Text style={styles.confirmedCode} maxFontSizeMultiplier={1.3} numberOfLines={1}>
-              {confirmedTicket.eventCode}
-            </Text>
-            <View style={styles.ticketButton}>
-              <Button
-                title={locale === 'fr' ? 'Voir mon billet' : locale === 'ar' ? 'عرض التذكرة' : 'ⵣⴻⵕ ⵜⵉⵇⵕⵉⵟ'}
-                variant="secondary"
-                accessibilityLabel={locale === 'fr' ? 'Voir mon billet' : 'عرض التذكرة'}
-                onPress={handleViewTicket}
-              />
+            <View style={styles.miniQrRow}>
+              <View style={styles.miniQrCard}>
+                <QrCode value={confirmedTicket.qrPayload} size={80} />
+              </View>
+              <View style={styles.confirmedInfo}>
+                <Text style={styles.confirmedLabel} maxFontSizeMultiplier={1.3}>
+                  {locale === 'fr' ? 'Inscription confirmée' : locale === 'ar' ? 'تم تأكيد التسجيل' : 'ⵢⴻⵜⵜⵡⴰⵙⴻⵏⵜⴻⵎ ⵓⵙⴻⵇⴻⵔ'}
+                </Text>
+                <Text style={styles.confirmedCode} maxFontSizeMultiplier={1.3} numberOfLines={1}>
+                  {confirmedTicket.eventCode}
+                </Text>
+              </View>
             </View>
+            <Button
+              title={texts.view_ticket}
+              variant="primary"
+              accessibilityLabel={texts.view_ticket}
+              onPress={handleViewTicket}
+            />
           </View>
         ) : (
           <Button
@@ -272,12 +324,13 @@ export default function OpportunityDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.canvas,
+    backgroundColor: '#fbf9f1',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#fbf9f1',
   },
   scroll: {
     flex: 1,
@@ -285,37 +338,89 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: spacing.xl,
   },
-  backRow: {
-    paddingHorizontal: spacing.md,
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
   },
-  header: {
-    paddingHorizontal: spacing.xl,
+  backButton: {
+    position: 'relative',
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backIcon: {
+    position: 'absolute',
+  },
+  heroCard: {
+    marginHorizontal: spacing.xl,
     marginBottom: spacing.lg,
+    backgroundColor: colors.canvas,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#ece9de',
+    padding: spacing.xl,
+    shadowColor: '#c8c0b3',
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
-  title: {
+  categoryBadge: {
+    marginBottom: spacing.md,
+  },
+  heroTitle: {
     ...typography['display-xs'],
     color: colors.ink,
-    marginTop: spacing.sm,
+    marginBottom: spacing.md,
   },
-  meta: {
-    paddingHorizontal: spacing.xl,
-    marginBottom: spacing.lg,
+  slotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
-  slots: {
+  slotsText: {
     ...typography['body-md-strong'],
-    color: colors.ink,
+    color: colors.inkDeep,
   },
-  section: {
+  infoSection: {
     marginHorizontal: spacing.xl,
     marginBottom: spacing.md,
   },
-  sectionTitle: {
-    ...typography['body-sm-strong'],
-    color: colors.ink,
-    marginBottom: spacing.sm,
+  infoCard: {
+    backgroundColor: colors.canvas,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#ece9de',
+    padding: spacing.lg,
+    flexDirection: 'row',
+    gap: spacing.md,
+    shadowColor: '#c8c0b3',
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
-  sectionText: {
+  infoIconShell: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: colors.primaryPale,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoLabel: {
+    ...typography['body-sm-strong'],
+    color: colors.body,
+    marginBottom: spacing.xs,
+  },
+  infoValue: {
     ...typography['body-md'],
     color: colors.ink,
   },
@@ -325,18 +430,39 @@ const styles = StyleSheet.create({
   footer: {
     padding: spacing.xl,
     borderTopWidth: 1,
-    borderTopColor: colors.ink,
-    backgroundColor: colors.canvas,
+    borderTopColor: '#ece9de',
+    backgroundColor: '#fbf9f1',
   },
   confirmedSection: {
+    gap: spacing.md,
+  },
+  miniQrRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
   },
-  confirmedCode: {
-    ...typography['body-sm-strong'],
-    color: colors.ink,
+  miniQrCard: {
+    backgroundColor: colors.canvas,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#ece9de',
+    padding: spacing.sm,
+    shadowColor: '#c8c0b3',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
-  ticketButton: {
-    width: '100%',
+  confirmedInfo: {
+    flex: 1,
+  },
+  confirmedLabel: {
+    ...typography['body-md-strong'],
+    color: colors.positive,
+    marginBottom: spacing.xxs,
+  },
+  confirmedCode: {
+    ...typography['body-sm'],
+    color: colors.body,
   },
 });

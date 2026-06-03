@@ -3,6 +3,7 @@ import { useCache } from './useCache';
 import { keys } from '../storage/prefs';
 import { api } from '../api/client';
 import type { getUserToken } from '../api/identity';
+import type { Locale } from '../i18n';
 import opportunitiesFixture from '../api/__fixtures__/opportunities.json';
 
 interface Opportunity {
@@ -55,11 +56,13 @@ export function useOpportunities() {
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [displayLocale, setDisplayLocale] = useState<Locale>('fr');
 
   const fetchOpportunities = useCallback(
-    async (token: Awaited<ReturnType<typeof getUserToken>>, locale: string) => {
+    async (token: Awaited<ReturnType<typeof getUserToken>>, locale: Locale) => {
       setLoading(true);
       setError(null);
+      setDisplayLocale(locale);
 
       const { data, error: apiError } = await api.get<OpportunitiesResponse>('/opportunities', {
         Authorization: `Bearer ${token}`,
@@ -87,14 +90,14 @@ export function useOpportunities() {
               id: item.id,
               title: item.title,
               category: item.category,
-              date: formatDate(item.date_ts, 'fr'),
+              date: formatDate(item.date_ts, displayLocale),
               distance: formatDistance(item.distance_m),
               slotsLeft: item.slots_left,
               establishmentName: item.establishment_name,
             }),
           )
         : [],
-    [rawData],
+    [rawData, displayLocale],
   );
 
   const filterByCategory = useCallback(
