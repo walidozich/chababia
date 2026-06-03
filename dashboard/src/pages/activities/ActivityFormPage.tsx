@@ -162,7 +162,6 @@ export default function ActivityFormPage() {
   const mode = watch('activity_mode')
 
   function onSubmit(data: FormValues) {
-    console.log('submit', data, 'translations', translations)
     toast.success(isEdit ? 'Activité mise à jour (mock)' : 'Activité créée (mock)', {
       description: data.title,
     })

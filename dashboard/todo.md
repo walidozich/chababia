@@ -270,7 +270,7 @@ function handleStatusChange(item: Thing, newStatus: ThingStatus) {
 
 ---
 
-## Phase 3 — Engagement & moderation UI (static fixtures)
+## Phase 3 — Engagement & moderation UI (static fixtures) ✓ DONE
 
 > Same rule as Phase 2: typed mock data only. No PocketBase calls.  
 > After completing Phase 3: run `npm run build` — fix all TS errors before Phase 4.
@@ -506,7 +506,7 @@ const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage'))
 
 ---
 
-## Phase 4 — AI recommendations & user management UI (static fixtures)
+## Phase 4 — AI recommendations & user management UI (static fixtures) ✓ DONE
 
 > Superuser-only screens. Guard both with `DEV_IS_ADMIN` check at page top.  
 > After completing Phase 4: run `npm run build` — 0 errors required.
@@ -733,7 +733,7 @@ const UserFormPage = lazy(() => import('@/pages/users/UserFormPage'))
 
 ---
 
-## Phase 5 — Dashboard home polish + eco audit
+## Phase 5 — Dashboard home polish + eco audit ✓ DONE
 
 > Update existing files only. No new page files.  
 > After completing Phase 5: run `npm run build` — 0 errors required.
@@ -792,12 +792,12 @@ function VerifiedIndicator({ date }: { date: string }) {
 
 ### 5d · Eco audit checklist
 
-- [ ] Verify all `DataTable` calls pass `pageSize={10}` or `pageSize={8}` — never load all rows without pagination
-- [ ] Verify `React.lazy` is used for ALL page components in App.tsx (already done for Phase 1–2 pages; extend to Phase 3–4 pages)
-- [ ] Verify no inline `require()` or dynamic imports outside of lazy boundaries
-- [ ] In `tailwind.config.ts` → `content` array must include `'./src/**/*.{ts,tsx}'` (already set)
-- [ ] No `console.log` in production code (remove any debug logs added during development)
-- [ ] Lighthouse: run `npm run build && npm run preview` then open Lighthouse. Target: Performance ≥ 85, Best Practices ≥ 90
+- [x] Verify all `DataTable` calls pass `pageSize={10}` or `pageSize={8}` — never load all rows without pagination
+- [x] Verify `React.lazy` is used for ALL page components in App.tsx (already done for Phase 1–2 pages; extend to Phase 3–4 pages)
+- [x] Verify no inline `require()` or dynamic imports outside of lazy boundaries
+- [x] In `tailwind.config.ts` → `content` array must include `'./src/**/*.{ts,tsx}'` (already set)
+- [x] No `console.log` in production code (remove any debug logs added during development)
+- [ ] Lighthouse: run `npm run build && npm run preview` then open Lighthouse. Target: Performance ≥ 85, Best Practices ≥ 90 (not run in Codex session: no browser/Lighthouse environment)
 
 ---
 
@@ -988,9 +988,9 @@ const response = await pb.send('/api/admin/event-recommendations', {
 Phase 0  Scaffold                                              ✓ DONE
 Phase 1  App shell + shared primitives + mocks setup           ✓ DONE
 Phase 2  Content management UI (activities, estab, cat, etc.)  ✓ DONE
-Phase 3  Engagement & moderation UI (registrations, projects, talent, reports)
-Phase 4  AI recommendations + User management
-Phase 5  Home polish + eco audit
+Phase 3  Engagement & moderation UI (registrations, projects, talent, reports) ✓ DONE
+Phase 4  AI recommendations + User management                      ✓ DONE
+Phase 5  Home polish + eco audit                                 ✓ DONE
 Phase 6  Auth login page + PocketBase integration (swap all mocks)
 Phase 7  Build + QA + deploy
 ```

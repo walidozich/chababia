@@ -99,13 +99,13 @@ export default function DocumentsPage() {
           <SelectTrigger className="w-28"><SelectValue placeholder="Langue" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Toutes</SelectItem>
-            <SelectItem value="fr">FR</SelectItem>
-            <SelectItem value="ar">AR</SelectItem>
-            <SelectItem value="tzm">TZM</SelectItem>
+            <SelectItem value="fr">Français</SelectItem>
+            <SelectItem value="ar">Arabe</SelectItem>
+            <SelectItem value="tzm">Tamazight</SelectItem>
           </SelectContent>
         </Select>
       </div>
-      <div className="bento-card"><DataTable columns={columns} data={filtered} /></div>
+      <div className="bento-card"><DataTable columns={columns} data={filtered} pageSize={10} /></div>
       <ConfirmDialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }} title="Supprimer le document ?" description={`« ${deleteTarget?.title} » sera supprimé.`} confirmLabel="Supprimer" destructive onConfirm={() => { toast.success('Document supprimé (mock)'); setDeleteTarget(null) }} />
     </div>
   )

@@ -16,6 +16,8 @@ import {
   ClipboardList,
   AlertTriangle,
   Rocket,
+  UserCheck,
+  FolderOpen,
   Plus,
   ChevronRight,
   Megaphone,
@@ -31,6 +33,7 @@ import { MOCK_REGISTRATIONS } from '@/mocks'
 import { MOCK_CONTENT_REPORTS } from '@/mocks'
 import { MOCK_ESTABLISHMENTS } from '@/mocks'
 import { MOCK_PROJECT_SUBMISSIONS } from '@/mocks'
+import { DEV_IS_ADMIN } from '@/lib/devRole'
 
 // ─── Design tokens for recharts (hex) ────────────────────────────────────────
 const C = {
@@ -145,7 +148,8 @@ function KpiCard({ label, value, icon: Icon, accent, sub }: KpiProps) {
 export default function HomePage() {
   const publishedActivities = MOCK_ACTIVITIES.filter((a) => a.status === 'published').length
   const activeEstablishments = MOCK_ESTABLISHMENTS.filter((e) => e.status === 'published').length
-  const openReports = MOCK_CONTENT_REPORTS.filter((r) => r.status === 'new').length
+  const totalRegistrations = MOCK_REGISTRATIONS.length
+  const openReports = DEV_IS_ADMIN ? MOCK_CONTENT_REPORTS.filter((r) => r.status === 'new').length : null
   const pendingProjects = MOCK_PROJECT_SUBMISSIONS.filter((p) => p.status === 'submitted').length
 
   return (
@@ -164,7 +168,7 @@ export default function HomePage() {
       />
 
       {/* ── Row 1 — KPIs ── */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <KpiCard
           label="Activités publiées"
           value={publishedActivities}
@@ -181,18 +185,34 @@ export default function HomePage() {
         />
         <KpiCard
           label="Inscriptions"
-          value={MOCK_REGISTRATIONS.length}
+          value={totalRegistrations}
           icon={ClipboardList}
           accent="bg-secondary-container text-secondary-on-container"
           sub={`${MOCK_REGISTRATIONS.filter((r) => r.status === 'attended').length} présences`}
         />
-        <KpiCard
-          label="Signalements ouverts"
-          value={openReports}
-          icon={AlertTriangle}
-          accent="bg-error-container text-error-on-container"
-          sub="Nécessitent attention"
-        />
+        {openReports !== null && (
+          <KpiCard
+            label="Signalements ouverts"
+            value={openReports}
+            icon={AlertTriangle}
+            accent="bg-error-container text-error-on-container"
+            sub="Nécessitent attention"
+          />
+        )}
+        <div className="bento-card flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <p className="text-label-sm font-semibold text-on-surface-variant">Projets en attente</p>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-tertiary-container text-tertiary-on-container">
+              <Rocket className="h-4 w-4" />
+            </div>
+          </div>
+          <div>
+            <p className="text-display-lg font-black leading-none text-tertiary">{pendingProjects}</p>
+            <Link to="/projects" className="mt-2 inline-flex text-label-sm text-primary hover:underline">
+              Voir les soumissions
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* ── Row 2 — Activity status donut + Registration bar ── */}
@@ -360,7 +380,7 @@ export default function HomePage() {
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs text-on-surface-variant">{pendingProjects} en attente de traitement</span>
-            <Link to="/projects" className="flex items-center gap-0.5 text-xs font-semibold text-primary-on-container hover:underline">
+            <Link to="/projects" className="flex items-center gap-0.5 text-xs font-semibold text-primary hover:underline">
               Voir tout <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
@@ -424,30 +444,41 @@ export default function HomePage() {
               Rédiger une annonce
             </Link>
             <Link
-              to="/reports"
-              className="flex items-center justify-between gap-3 rounded-xl border border-outline px-3 py-2.5 text-label-sm font-semibold text-on-surface transition-colors hover:bg-surface-container"
+              to="/registrations"
+              className="flex items-center gap-3 rounded-xl border border-outline px-3 py-2.5 text-label-sm font-semibold text-on-surface transition-colors hover:bg-surface-container"
             >
-              <div className="flex items-center gap-3">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-error-container">
-                  <AlertTriangle className="h-3.5 w-3.5 text-error" />
-                </div>
-                Voir les signalements
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-tertiary-container">
+                <UserCheck className="h-3.5 w-3.5 text-tertiary" />
               </div>
-              {openReports > 0 && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-error text-xs font-bold text-white">
-                  {openReports}
-                </span>
-              )}
+              Pointage activité
             </Link>
+            {openReports !== null && (
+              <Link
+                to="/reports"
+                className="flex items-center justify-between gap-3 rounded-xl border border-outline px-3 py-2.5 text-label-sm font-semibold text-on-surface transition-colors hover:bg-surface-container"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-error-container">
+                    <AlertTriangle className="h-3.5 w-3.5 text-error" />
+                  </div>
+                  Voir les signalements
+                </div>
+                {openReports > 0 && (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-error text-xs font-bold text-white">
+                    {openReports}
+                  </span>
+                )}
+              </Link>
+            )}
             <Link
               to="/projects"
               className="flex items-center justify-between gap-3 rounded-xl border border-outline px-3 py-2.5 text-label-sm font-semibold text-on-surface transition-colors hover:bg-surface-container"
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary-container">
-                  <Rocket className="h-3.5 w-3.5 text-secondary" />
+                  <FolderOpen className="h-3.5 w-3.5 text-secondary" />
                 </div>
-                Traiter les projets
+                Projets à traiter
               </div>
               {pendingProjects > 0 && (
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-container text-xs font-bold text-primary-on-container">

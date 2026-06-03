@@ -30,13 +30,13 @@ const RecommendationsPage = lazy(() => import('@/pages/recommendations/Recommend
 const UsersPage = lazy(() => import('@/pages/users/UsersPage'))
 const UserFormPage = lazy(() => import('@/pages/users/UserFormPage'))
 
-// Phase 3–4 stubs
+// Future-phase stubs
 function ComingSoon({ label }: { label: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
       <p className="text-label-sm uppercase tracking-widest text-on-surface-variant">À venir</p>
       <h1 className="text-headline-sm font-extrabold text-on-surface">{label}</h1>
-      <p className="text-body-sm text-on-surface-variant">Cette section sera disponible en Phase 3.</p>
+      <p className="text-body-sm text-on-surface-variant">Cette section sera disponible dans une phase ultérieure.</p>
     </div>
   )
 }

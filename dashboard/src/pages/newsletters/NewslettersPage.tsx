@@ -74,13 +74,13 @@ export default function NewslettersPage() {
           <SelectTrigger className="w-32"><SelectValue placeholder="Langue" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Toutes</SelectItem>
-            <SelectItem value="fr">FR</SelectItem>
-            <SelectItem value="ar">AR</SelectItem>
-            <SelectItem value="tzm">TZM</SelectItem>
+            <SelectItem value="fr">Français</SelectItem>
+            <SelectItem value="ar">Arabe</SelectItem>
+            <SelectItem value="tzm">Tamazight</SelectItem>
           </SelectContent>
         </Select>
       </div>
-      <div className="bento-card"><DataTable columns={columns} data={filtered} /></div>
+      <div className="bento-card"><DataTable columns={columns} data={filtered} pageSize={10} /></div>
       <ConfirmDialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }} title="Supprimer la newsletter ?" description={`« ${deleteTarget?.title} » sera supprimée.`} confirmLabel="Supprimer" destructive onConfirm={() => { toast.success('Newsletter supprimée (mock)'); setDeleteTarget(null) }} />
     </div>
   )

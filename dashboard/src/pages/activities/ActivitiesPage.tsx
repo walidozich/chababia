@@ -21,6 +21,13 @@ import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
 const categoryName = (id: string) =>
   MOCK_CATEGORIES.find((c) => c.id === id)?.name ?? id
 
+function VerifiedIndicator({ date }: { date: string }) {
+  if (!date) return <span className="text-xs text-on-surface-variant/50">Non vérifié</span>
+  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000)
+  if (days > 30) return <span className="text-xs text-error">Vérifié il y a {days}j · à revoir</span>
+  return <span className="text-xs text-on-surface-variant">Vérifié il y a {days}j</span>
+}
+
 export default function ActivitiesPage() {
   const canWrite = can('write', 'activities', DEV_ROLE, DEV_IS_ADMIN)
 
@@ -84,6 +91,11 @@ export default function ActivitiesPage() {
           : '—',
     },
     {
+      accessorKey: 'last_verified_at',
+      header: 'Vérification',
+      cell: ({ row }) => <VerifiedIndicator date={row.original.last_verified_at} />,
+    },
+    {
       id: 'actions',
       header: '',
       cell: ({ row }) => (
@@ -100,7 +112,7 @@ export default function ActivitiesPage() {
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => {
-                  toast.success('Brouillon dupliqué', { description: row.original.title })
+                  toast.success('Brouillon dupliqué (mock)', { description: row.original.title })
                 }}
               >
                 <Copy className="h-3.5 w-3.5" />
@@ -202,7 +214,7 @@ export default function ActivitiesPage() {
         confirmLabel="Supprimer"
         destructive
         onConfirm={() => {
-          toast.success('Activité supprimée (mock — aucun changement réel)')
+          toast.success('Activité supprimée (mock)')
           setDeleteTarget(null)
         }}
       />

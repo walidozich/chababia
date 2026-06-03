@@ -88,7 +88,7 @@ export default function CategoriesPage() {
         action={canWrite ? <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4" />Nouvelle catégorie</Button> : undefined}
       />
       <div className="bento-card">
-        <DataTable columns={columns} data={MOCK_CATEGORIES} />
+        <DataTable columns={columns} data={MOCK_CATEGORIES} pageSize={10} />
       </div>
 
       <Dialog open={isCreating || editTarget !== null} onOpenChange={(open) => { if (!open) { setIsCreating(false); setEditTarget(null) } }}>

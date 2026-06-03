@@ -17,6 +17,13 @@ import type { Announcement } from '@/types/collections'
 import { can } from '@/lib/permissions'
 import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
 
+function VerifiedIndicator({ date }: { date: string }) {
+  if (!date) return <span className="text-xs text-on-surface-variant/50">Non vérifié</span>
+  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000)
+  if (days > 30) return <span className="text-xs text-error">Vérifié il y a {days}j · à revoir</span>
+  return <span className="text-xs text-on-surface-variant">Vérifié il y a {days}j</span>
+}
+
 export default function AnnouncementsPage() {
   const canWrite = can('write', 'announcements', DEV_ROLE, DEV_IS_ADMIN)
   const [search, setSearch] = useState('')
@@ -48,6 +55,7 @@ export default function AnnouncementsPage() {
     { accessorKey: 'status', header: 'Statut', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
     { accessorKey: 'language', header: 'Langue', cell: ({ row }) => <span className="rounded-full border border-outline px-2 py-0.5 text-xs font-semibold text-on-surface-variant">{row.original.language.toUpperCase()}</span> },
     { accessorKey: 'created', header: 'Date', cell: ({ row }) => format(new Date(row.original.created), 'd MMM yyyy', { locale: fr }) },
+    { accessorKey: 'last_verified_at', header: 'Vérification', cell: ({ row }) => <VerifiedIndicator date={row.original.last_verified_at} /> },
     {
       id: 'actions', header: '',
       cell: ({ row }) => canWrite ? (
@@ -96,7 +104,7 @@ export default function AnnouncementsPage() {
           </SelectContent>
         </Select>
       </div>
-      <div className="bento-card"><DataTable columns={columns} data={filtered} /></div>
+      <div className="bento-card"><DataTable columns={columns} data={filtered} pageSize={10} /></div>
       <ConfirmDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}

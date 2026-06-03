@@ -25,6 +25,13 @@ const TYPE_LABELS: Record<string, string> = {
   scientific_leisure_center: 'Centre loisirs scientifiques',
 }
 
+function VerifiedIndicator({ date }: { date: string }) {
+  if (!date) return <span className="text-xs text-on-surface-variant/50">Non vérifié</span>
+  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000)
+  if (days > 30) return <span className="text-xs text-error">Vérifié il y a {days}j · à revoir</span>
+  return <span className="text-xs text-on-surface-variant">Vérifié il y a {days}j</span>
+}
+
 export default function EstablishmentsPage() {
   const canWrite = can('write', 'establishments', DEV_ROLE, DEV_IS_ADMIN)
   const [search, setSearch] = useState('')
@@ -56,6 +63,7 @@ export default function EstablishmentsPage() {
     { accessorKey: 'status', header: 'Statut', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
     { id: 'location', header: 'Lieu', cell: ({ row }) => <span className="text-on-surface-variant">{row.original.commune}, {row.original.wilaya}</span> },
     { accessorKey: 'phone', header: 'Téléphone', cell: ({ row }) => <span className="text-on-surface-variant">{row.original.phone || '—'}</span> },
+    { accessorKey: 'last_verified_at', header: 'Vérification', cell: ({ row }) => <VerifiedIndicator date={row.original.last_verified_at} /> },
     {
       id: 'actions', header: '',
       cell: ({ row }) => canWrite ? (
@@ -100,7 +108,7 @@ export default function EstablishmentsPage() {
       <div className="bento-card">
         {filtered.length === 0
           ? <EmptyState title="Aucun établissement trouvé" description="Modifiez les filtres ou créez un nouvel établissement." />
-          : <DataTable columns={columns} data={filtered} />
+          : <DataTable columns={columns} data={filtered} pageSize={10} />
         }
       </div>
       <ConfirmDialog
