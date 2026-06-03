@@ -314,7 +314,7 @@ flowchart TD
     RD -->|content_reports\nusers\nrecommendation_history| ADM[isAdmin seulement]
     RD -->|autres| AUTH[isAdmin OR role ≠ youth]
 
-    CAN -->|action = write\nou delete| WR{WRITE_RULES[resource]}
+    CAN -->|action = write\nou delete| WR{"WRITE_RULES[resource]"}
     WR -->|activities\nestablishments| SA_WA_EM[super_admin · wilaya_admin\nestab_manager · isAdmin]
     WR -->|announcements\nnewsletters · documents\ntalent_showcase| SA_WA_CE[super_admin · wilaya_admin\ncontent_editor · isAdmin]
     WR -->|categories\ncontent_reports\nusers| ADMIN_ONLY[isAdmin seulement]
