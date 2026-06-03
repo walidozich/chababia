@@ -1,6 +1,30 @@
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
+export function KpiSkeleton() {
+  return (
+    <div className="bento-card flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-9 w-9 rounded-xl" />
+      </div>
+      <Skeleton className="h-10 w-20" />
+      <Skeleton className="h-3 w-16" />
+    </div>
+  )
+}
+
+export function ChartSkeleton({ className, height = 176 }: { className?: string; height?: number }) {
+  return (
+    <div className={cn('bento-card flex flex-col gap-4', className)}>
+      <Skeleton className="h-4 w-36" />
+      <div className="w-full overflow-hidden rounded-xl" style={{ height }}>
+        <Skeleton className="h-full w-full" />
+      </div>
+    </div>
+  )
+}
+
 export function TableSkeleton({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
   return (
     <div className="space-y-2">
