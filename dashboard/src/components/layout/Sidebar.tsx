@@ -15,7 +15,6 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
-  Leaf,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { can } from '@/lib/permissions'
@@ -24,6 +23,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { ChababiaLogo } from '@/components/shared/ChababiaLogo'
 import type { Role } from '@/types/collections'
 
 const ROLE_LABELS: Record<string, string> = {
@@ -168,15 +168,17 @@ export function Sidebar() {
           collapsed ? 'justify-center' : 'gap-3',
         )}
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
-          <Leaf className="h-4 w-4 text-on-surface" />
-        </div>
-        {!collapsed && (
-          <div className="min-w-0">
-            <p className="truncate text-label-lg font-extrabold tracking-tight text-on-surface">
-              Chababia
-            </p>
-            <p className="truncate text-xs text-on-surface-variant">Dashboard ODEJ</p>
+        {collapsed ? (
+          <ChababiaLogo className="h-6 w-auto" fill="#2f6c00" />
+        ) : (
+          <div className="flex min-w-0 items-center gap-2.5">
+            <ChababiaLogo className="h-6 w-auto shrink-0" fill="#2f6c00" />
+            <div className="min-w-0">
+              <p className="truncate text-label-lg font-extrabold tracking-tight text-on-surface">
+                Chababia
+              </p>
+              <p className="truncate text-xs text-on-surface-variant">Dashboard ODEJ</p>
+            </div>
           </div>
         )}
       </div>

@@ -373,7 +373,6 @@ export default function ActivityFormPage() {
                             <SelectValue placeholder="Optionnel" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Aucun</SelectItem>
                             {establishments.map((e) => (
                               <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
                             ))}

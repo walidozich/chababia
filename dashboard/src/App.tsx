@@ -27,10 +27,13 @@ const RegistrationsPage = lazy(() => import('@/pages/registrations/Registrations
 const ProjectsPage = lazy(() => import('@/pages/projects/ProjectsPage'))
 const ProjectDetailPage = lazy(() => import('@/pages/projects/ProjectDetailPage'))
 const TalentPage = lazy(() => import('@/pages/talent/TalentPage'))
+const TalentFormPage = lazy(() => import('@/pages/talent/TalentFormPage'))
 const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage'))
 const RecommendationsPage = lazy(() => import('@/pages/recommendations/RecommendationsPage'))
 const UsersPage = lazy(() => import('@/pages/users/UsersPage'))
 const UserFormPage = lazy(() => import('@/pages/users/UserFormPage'))
+const ProfilePage = lazy(() => import('@/pages/profile/ProfilePage'))
+const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'))
 
 function P({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
@@ -81,6 +84,8 @@ export default function App() {
           <Route path="projects" element={<P><ProjectsPage /></P>} />
           <Route path="projects/:id" element={<P><ProjectDetailPage /></P>} />
           <Route path="talent" element={<P><TalentPage /></P>} />
+          <Route path="talent/new" element={<P><TalentFormPage /></P>} />
+          <Route path="talent/:id" element={<P><TalentFormPage /></P>} />
           <Route path="reports" element={<P><ReportsPage /></P>} />
 
           {/* Phase 4 */}
@@ -88,6 +93,10 @@ export default function App() {
           <Route path="users/new" element={<P><UserFormPage /></P>} />
           <Route path="users/:id" element={<P><UserFormPage /></P>} />
           <Route path="recommendations" element={<P><RecommendationsPage /></P>} />
+
+          {/* Account */}
+          <Route path="profile" element={<P><ProfilePage /></P>} />
+          <Route path="settings" element={<P><SettingsPage /></P>} />
 
           <Route path="*" element={<P><NotFoundPage /></P>} />
         </Route>

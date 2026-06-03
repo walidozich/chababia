@@ -138,7 +138,7 @@ export default function NewsletterFormPage() {
                 <Controller control={control} name="related_activity" render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger><SelectValue placeholder="Aucune" /></SelectTrigger>
-                    <SelectContent><SelectItem value="">Aucune</SelectItem>{activities.map((a) => <SelectItem key={a.id} value={a.id}>{a.title}</SelectItem>)}</SelectContent>
+                    <SelectContent>{activities.map((a) => <SelectItem key={a.id} value={a.id}>{a.title}</SelectItem>)}</SelectContent>
                   </Select>
                 )} />
               </FormField>
@@ -146,7 +146,7 @@ export default function NewsletterFormPage() {
                 <Controller control={control} name="related_establishment" render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
-                    <SelectContent><SelectItem value="">Aucun</SelectItem>{establishments.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent>
+                    <SelectContent>{establishments.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent>
                   </Select>
                 )} />
               </FormField>

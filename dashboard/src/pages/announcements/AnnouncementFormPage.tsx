@@ -156,7 +156,6 @@ export default function AnnouncementFormPage() {
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Aucun</SelectItem>
                       {establishments.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -167,7 +166,6 @@ export default function AnnouncementFormPage() {
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger><SelectValue placeholder="Aucune" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Aucune</SelectItem>
                       {activities.map((a) => <SelectItem key={a.id} value={a.id}>{a.title}</SelectItem>)}
                     </SelectContent>
                   </Select>

@@ -22,7 +22,7 @@ function field(record: unknown, key: string): unknown {
   return (record as Record<string, unknown>)[key]
 }
 
-function syncAuthStore() {
+export function syncAuthStore() {
   const record = pb.authStore.record
   const isSuperuser = pb.authStore.isSuperuser
   const id = field(record, 'id')
@@ -44,43 +44,30 @@ function syncAuthStore() {
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
-  const [isChecking, setIsChecking] = useState(true)
+  const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
-    let cancelled = false
+    // Synchronous local JWT check — no network call needed.
+    // pb.authStore.isValid checks the token's `exp` claim locally.
+    if (!pb.authStore.isValid) {
+      useAuthStore.getState().clearAuth()
+      void navigate('/login', { replace: true })
+    } else {
+      syncAuthStore()
+    }
+    setIsReady(true)
 
-    async function verifySession() {
+    // React to auth store changes: token cleared by logout, 401 handler, or SDK expiry.
+    const unsubscribe = pb.authStore.onChange(() => {
       if (!pb.authStore.isValid) {
         useAuthStore.getState().clearAuth()
         void navigate('/login', { replace: true })
-        if (!cancelled) setIsChecking(false)
-        return
       }
+    })
 
-      try {
-        if (pb.authStore.isSuperuser) {
-          await pb.collection('_superusers').authRefresh()
-        } else {
-          await pb.collection('users').authRefresh()
-        }
-        syncAuthStore()
-      } catch {
-        pb.authStore.clear()
-        useAuthStore.getState().clearAuth()
-        void navigate('/login', { replace: true })
-      } finally {
-        if (!cancelled) setIsChecking(false)
-      }
-    }
-
-    void verifySession()
-
-    return () => {
-      cancelled = true
-    }
+    return unsubscribe
   }, [navigate])
 
-  if (isChecking) return null
-
+  if (!isReady) return null
   return <>{children}</>
 }

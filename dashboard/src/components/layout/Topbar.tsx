@@ -37,9 +37,12 @@ const ROUTE_LABELS: Record<string, string> = {
   '/registrations': 'Inscriptions',
   '/projects': 'Projets jeunes',
   '/talent': 'Vitrine talents',
+  '/talent/new': 'Nouveau talent',
   '/reports': 'Signalements',
   '/users': 'Utilisateurs',
   '/recommendations': 'IA Recommandations',
+  '/profile': 'Mon profil',
+  '/settings': 'Paramètres',
 }
 
 function useBreadcrumbs() {
@@ -148,11 +151,11 @@ export function Topbar() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer gap-2">
+            <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => void navigate('/profile')}>
               <User className="h-4 w-4" />
               Profil
             </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer gap-2">
+            <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => void navigate('/settings')}>
               <Settings className="h-4 w-4" />
               Paramètres
             </DropdownMenuItem>

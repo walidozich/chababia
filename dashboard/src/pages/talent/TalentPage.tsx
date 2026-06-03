@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type ColumnDef } from '@tanstack/react-table'
-import { Archive, Check, X } from 'lucide-react'
+import { Archive, Check, Pencil, Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -111,6 +112,13 @@ export default function TalentPage() {
       header: '',
       cell: ({ row }) => (
         <div className="flex flex-wrap justify-end gap-1">
+          {canWrite && (
+            <Link to={`/talent/${row.original.id}`}>
+              <Button variant="ghost" size="sm" className="h-7 text-xs">
+                <Pencil className="h-3 w-3" />
+              </Button>
+            </Link>
+          )}
           {canWrite && row.original.status === 'draft' && (
             <>
               <Button
@@ -156,6 +164,16 @@ export default function TalentPage() {
       <PageHeader
         title="Vitrine talents"
         description={`${String(talents.length)} propositions de talents`}
+        action={
+          canWrite ? (
+            <Link to="/talent/new">
+              <Button size="sm">
+                <Plus className="h-4 w-4" />
+                Nouveau talent
+              </Button>
+            </Link>
+          ) : undefined
+        }
       />
 
       <div className="flex flex-wrap gap-3">

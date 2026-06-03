@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowRight, Leaf, Loader2, Lock, Mail } from 'lucide-react'
+import { ArrowRight, Loader2, Lock, Mail } from 'lucide-react'
+import { ChababiaLogo } from '@/components/shared/ChababiaLogo'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -105,9 +106,7 @@ export default function LoginPage() {
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,1fr)_520px]">
         <section className="hidden min-h-screen flex-col justify-between border-r border-outline bg-primary p-10 text-white lg:flex">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-container text-primary-on-container">
-              <Leaf className="h-5 w-5" />
-            </div>
+            <ChababiaLogo className="h-9 w-auto" fill="white" />
             <div>
               <p className="text-headline-sm font-black">Chababia</p>
               <p className="text-body-sm text-white/70">Dashboard ODEJ</p>
@@ -128,9 +127,7 @@ export default function LoginPage() {
         <section className="flex min-h-screen items-center justify-center px-5 py-10">
           <div className="w-full max-w-md space-y-8">
             <div className="space-y-3 lg:hidden">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-container text-primary-on-container">
-                <Leaf className="h-5 w-5" />
-              </div>
+              <ChababiaLogo className="h-9 w-auto" fill="#2f6c00" />
               <div>
                 <p className="text-headline-sm font-black">Chababia</p>
                 <p className="text-body-sm text-on-surface-variant">Dashboard ODEJ</p>
