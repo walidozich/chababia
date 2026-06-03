@@ -1,0 +1,87 @@
+import { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
+import { type ColumnDef } from '@tanstack/react-table'
+import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { PageHeader } from '@/components/shared/PageHeader'
+import { StatusBadge } from '@/components/shared/StatusBadge'
+import { DataTable } from '@/components/shared/DataTable'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { MOCK_NEWSLETTERS } from '@/mocks'
+import type { Newsletter } from '@/types/collections'
+import { can } from '@/lib/permissions'
+import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
+
+export default function NewslettersPage() {
+  const canWrite = can('write', 'newsletters', DEV_ROLE, DEV_IS_ADMIN)
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [filterLang, setFilterLang] = useState('all')
+  const [deleteTarget, setDeleteTarget] = useState<Newsletter | null>(null)
+
+  const filtered = useMemo(() => MOCK_NEWSLETTERS.filter((n) => {
+    if (search && !n.title.toLowerCase().includes(search.toLowerCase())) return false
+    if (filterStatus !== 'all' && n.status !== filterStatus) return false
+    if (filterLang !== 'all' && n.language !== filterLang) return false
+    return true
+  }).sort((a, b) => b.created.localeCompare(a.created)), [search, filterStatus, filterLang])
+
+  const columns: ColumnDef<Newsletter>[] = [
+    {
+      accessorKey: 'title',
+      header: 'Titre',
+      cell: ({ row }) => (
+        <div className="max-w-[280px]">
+          <p className="truncate font-semibold text-on-surface">{row.original.title}</p>
+          {row.original.target_wilaya && <p className="text-xs text-on-surface-variant">Wilaya: {row.original.target_wilaya}</p>}
+        </div>
+      ),
+    },
+    { accessorKey: 'status', header: 'Statut', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
+    { accessorKey: 'language', header: 'Langue', cell: ({ row }) => <span className="rounded-full border border-outline px-2 py-0.5 text-xs font-semibold text-on-surface-variant">{row.original.language.toUpperCase()}</span> },
+    { accessorKey: 'published_at', header: 'Publié le', cell: ({ row }) => row.original.published_at ? format(new Date(row.original.published_at), 'd MMM yyyy', { locale: fr }) : '—' },
+    {
+      id: 'actions', header: '',
+      cell: ({ row }) => canWrite ? (
+        <div className="flex justify-end gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" asChild><Link to={`/newsletters/${row.original.id}`}><Pencil className="h-3.5 w-3.5" /></Link></Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-error hover:bg-error/10" onClick={() => setDeleteTarget(row.original)}><Trash2 className="h-3.5 w-3.5" /></Button>
+        </div>
+      ) : null,
+    },
+  ]
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Newsletters" description={`${MOCK_NEWSLETTERS.length} newsletters`} action={canWrite ? <Button asChild size="sm"><Link to="/newsletters/new"><Plus className="h-4 w-4" />Nouvelle newsletter</Link></Button> : undefined} />
+      <div className="flex flex-wrap gap-3">
+        <Input placeholder="Rechercher..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-48" />
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-36"><SelectValue placeholder="Statut" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les statuts</SelectItem>
+            <SelectItem value="published">Publiées</SelectItem>
+            <SelectItem value="draft">Brouillons</SelectItem>
+            <SelectItem value="archived">Archivées</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterLang} onValueChange={setFilterLang}>
+          <SelectTrigger className="w-32"><SelectValue placeholder="Langue" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes</SelectItem>
+            <SelectItem value="fr">FR</SelectItem>
+            <SelectItem value="ar">AR</SelectItem>
+            <SelectItem value="tzm">TZM</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="bento-card"><DataTable columns={columns} data={filtered} /></div>
+      <ConfirmDialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }} title="Supprimer la newsletter ?" description={`« ${deleteTarget?.title} » sera supprimée.`} confirmLabel="Supprimer" destructive onConfirm={() => { toast.success('Newsletter supprimée (mock)'); setDeleteTarget(null) }} />
+    </div>
+  )
+}

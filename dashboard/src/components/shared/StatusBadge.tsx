@@ -46,6 +46,16 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   normal: { label: 'Normal', className: 'bg-surface-container text-on-surface-variant border-outline' },
   high: { label: 'Haute', className: 'bg-secondary/15 text-secondary border-secondary/30' },
   urgent: { label: 'Urgent', className: 'bg-error/10 text-error border-error/20' },
+  // Activity mode
+  physical: { label: 'Présentiel', className: 'bg-tertiary/10 text-tertiary border-tertiary/20' },
+  online: { label: 'En ligne', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+  hybrid: { label: 'Hybride', className: 'bg-secondary/15 text-secondary border-secondary/30' },
+  // Bandwidth
+  low: { label: 'Basse', className: 'bg-primary/15 text-on-surface border-primary/30' },
+  medium: { label: 'Moyenne', className: 'bg-secondary/15 text-secondary border-secondary/30' },
+  // Category status
+  active: { label: 'Actif', className: 'bg-primary/15 text-on-surface border-primary/30' },
+  inactive: { label: 'Inactif', className: 'bg-surface-container text-on-surface-variant/60 border-outline' },
   // Recommendation
   pending: { label: 'En attente', className: 'bg-orange-50 text-orange-700 border-orange-200' },
   completed: { label: 'Complété', className: 'bg-primary/15 text-on-surface border-primary/30' },
