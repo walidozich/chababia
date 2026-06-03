@@ -208,24 +208,24 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    LOGIN[/login]
+    LOGIN["login"]
 
-    subgraph Protected ["AuthGuard → AppLayout"]
-        HOME[/ — Tableau de bord\nKPI + graphiques]
-        ACT[/activities — Activités\n/activities/new · /:id]
-        EST[/establishments — Établissements\n/establishments/new · /:id]
-        CAT[/categories — Catégories]
-        ANN[/announcements\n/announcements/new · /:id]
-        NEW[/newsletters\n/newsletters/new · /:id]
-        DOC[/documents\n/documents/new · /:id]
-        REG[/registrations — Inscriptions]
-        PRO[/projects — Projets\n/projects/:id]
-        TAL[/talent — Talent\n/talent/new · /:id]
-        REP[/reports — Signalements]
-        USR[/users — Utilisateurs\n/users/new · /:id]
-        REC[/recommendations — IA Admin]
-        PFL[/profile]
-        SET[/settings]
+    subgraph Protected ["AuthGuard — AppLayout"]
+        HOME["index — Tableau de bord\nKPI + graphiques"]
+        ACT["activities\nactivities/new · activities/:id"]
+        EST["establishments\nestablishments/new · establishments/:id"]
+        CAT["categories"]
+        ANN["announcements\nannouncements/new · announcements/:id"]
+        NEW["newsletters\nnewsletters/new · newsletters/:id"]
+        DOC["documents\ndocuments/new · documents/:id"]
+        REG["registrations"]
+        PRO["projects · projects/:id"]
+        TAL["talent\ntalent/new · talent/:id"]
+        REP["reports"]
+        USR["users\nusers/new · users/:id"]
+        REC["recommendations — IA Admin"]
+        PFL["profile"]
+        SET["settings"]
     end
 
     LOGIN -->|auth OK| HOME
