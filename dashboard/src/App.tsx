@@ -26,6 +26,9 @@ const ProjectsPage = lazy(() => import('@/pages/projects/ProjectsPage'))
 const ProjectDetailPage = lazy(() => import('@/pages/projects/ProjectDetailPage'))
 const TalentPage = lazy(() => import('@/pages/talent/TalentPage'))
 const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage'))
+const RecommendationsPage = lazy(() => import('@/pages/recommendations/RecommendationsPage'))
+const UsersPage = lazy(() => import('@/pages/users/UsersPage'))
+const UserFormPage = lazy(() => import('@/pages/users/UserFormPage'))
 
 // Phase 3–4 stubs
 function ComingSoon({ label }: { label: string }) {
@@ -89,9 +92,11 @@ export default function App() {
           <Route path="talent" element={<P><TalentPage /></P>} />
           <Route path="reports" element={<P><ReportsPage /></P>} />
 
-          {/* Phase 4 stubs */}
-          <Route path="users" element={<ComingSoon label="Utilisateurs" />} />
-          <Route path="recommendations" element={<ComingSoon label="IA Recommandations" />} />
+          {/* Phase 4 */}
+          <Route path="users" element={<P><UsersPage /></P>} />
+          <Route path="users/new" element={<P><UserFormPage /></P>} />
+          <Route path="users/:id" element={<P><UserFormPage /></P>} />
+          <Route path="recommendations" element={<P><RecommendationsPage /></P>} />
 
           <Route path="*" element={<P><NotFoundPage /></P>} />
         </Route>
