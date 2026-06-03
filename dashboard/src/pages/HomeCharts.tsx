@@ -13,10 +13,7 @@ import {
 } from 'recharts'
 import {
   Zap,
-  Building2,
-  ClipboardList,
   AlertTriangle,
-  Rocket,
   UserCheck,
   FolderOpen,
   ChevronRight,
@@ -34,20 +31,19 @@ import { STALE } from '@/lib/staleTimes'
 import type { Activity, ContentReport, ProjectSubmission, Registration } from '@/types/collections'
 
 const C = {
-  lime: '#9fe870',
-  limeDeep: '#2f6c00',
-  forest: '#bae099',
-  forestDeep: '#47672d',
-  gray: '#dbded9',
-  grayDeep: '#5b5f5c',
-  surface: '#fbf9f3',
-  surfaceContainer: '#efeee8',
-  outline: '#c1cab5',
-  error: '#ba1a1a',
-  errorContainer: '#ffdad6',
-  text: '#1b1c19',
-  textMuted: '#41493a',
-  orange: '#f4a261',
+  lime: 'hsl(var(--primary-container))',
+  limeDeep: 'hsl(var(--primary))',
+  forest: 'hsl(var(--tertiary-container))',
+  forestDeep: 'hsl(var(--tertiary))',
+  gray: 'hsl(var(--secondary-container))',
+  grayDeep: 'hsl(var(--secondary))',
+  surface: 'hsl(var(--surface))',
+  surfaceContainer: 'hsl(var(--surface-container))',
+  outline: 'hsl(var(--outline-variant))',
+  error: 'hsl(var(--error))',
+  errorContainer: 'hsl(var(--error-container))',
+  textMuted: 'hsl(var(--on-surface-variant))',
+  orange: 'hsl(var(--error-container))',
 }
 
 function ChartTooltip({ active, payload, label }: {

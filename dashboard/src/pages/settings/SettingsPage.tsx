@@ -150,7 +150,7 @@ export default function SettingsPage() {
           <SectionCard title="À propos de la plateforme">
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center">
-                <ChababiaLogo className="h-10 w-auto" fill="#2f6c00" />
+                <ChababiaLogo className="h-10 w-auto text-primary-container" />
               </div>
               <div className="space-y-1">
                 <p className="text-label-lg font-extrabold text-on-surface">Chababia</p>

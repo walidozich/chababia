@@ -33,11 +33,11 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   waiting_list: { label: 'Liste att.', className: 'bg-secondary/15 text-secondary border-secondary/30' },
   attended: { label: 'Présent', className: 'bg-tertiary/15 text-tertiary border-tertiary/30' },
   // Project
-  submitted: { label: 'Soumis', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+  submitted: { label: 'Soumis', className: 'bg-tertiary-container text-tertiary-on-container border-tertiary/30' },
   reviewed: { label: 'Examiné', className: 'bg-secondary/15 text-secondary border-secondary/30' },
   accepted: { label: 'Accepté', className: 'bg-primary/15 text-on-surface border-primary/30' },
   rejected: { label: 'Rejeté', className: 'bg-error/10 text-error border-error/20' },
-  needs_more_info: { label: 'Info manq.', className: 'bg-orange-50 text-orange-700 border-orange-200' },
+  needs_more_info: { label: 'Info manq.', className: 'bg-error-container text-error-on-container border-error/30' },
   // Report
   new: { label: 'Nouveau', className: 'bg-error/10 text-error border-error/20' },
   resolved: { label: 'Résolu', className: 'bg-primary/15 text-on-surface border-primary/30' },
@@ -48,7 +48,7 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   urgent: { label: 'Urgent', className: 'bg-error/10 text-error border-error/20' },
   // Activity mode
   physical: { label: 'Présentiel', className: 'bg-tertiary/10 text-tertiary border-tertiary/20' },
-  online: { label: 'En ligne', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+  online: { label: 'En ligne', className: 'bg-tertiary-container text-tertiary-on-container border-tertiary/30' },
   hybrid: { label: 'Hybride', className: 'bg-secondary/15 text-secondary border-secondary/30' },
   // Bandwidth
   low: { label: 'Basse', className: 'bg-primary/15 text-on-surface border-primary/30' },
@@ -57,7 +57,7 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   active: { label: 'Actif', className: 'bg-primary/15 text-on-surface border-primary/30' },
   inactive: { label: 'Inactif', className: 'bg-surface-container text-on-surface-variant/60 border-outline' },
   // Recommendation
-  pending: { label: 'En attente', className: 'bg-orange-50 text-orange-700 border-orange-200' },
+  pending: { label: 'En attente', className: 'bg-error-container text-error-on-container border-error/30' },
   completed: { label: 'Complété', className: 'bg-primary/15 text-on-surface border-primary/30' },
   cached: { label: 'Cache', className: 'bg-surface-container text-on-surface-variant border-outline' },
   failed: { label: 'Échoué', className: 'bg-error/10 text-error border-error/20' },

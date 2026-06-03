@@ -96,7 +96,7 @@ export default function HomePage() {
     queryFn: () => getFullList<Registration>(COLLECTIONS.registrations, {
       fields: 'id,status',
     }),
-    staleTime: STALE.contentReports,
+    staleTime: STALE.registrations,
   })
   const reportsQuery = useQuery({
     queryKey: qk.list(COLLECTIONS.contentReports, 'home'),
@@ -104,14 +104,14 @@ export default function HomePage() {
       fields: 'id,status',
     }),
     enabled: isAdmin,
-    staleTime: STALE.projectSubmissions,
+    staleTime: STALE.contentReports,
   })
   const projectsQuery = useQuery({
     queryKey: qk.list(COLLECTIONS.projectSubmissions, 'home'),
     queryFn: () => getFullList<ProjectSubmission>(COLLECTIONS.projectSubmissions, {
       fields: 'id,status',
     }),
-    staleTime: STALE.registrations,
+    staleTime: STALE.projectSubmissions,
   })
 
   const activities = activitiesQuery.data ?? []

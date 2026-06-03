@@ -36,11 +36,11 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  super_admin: 'bg-primary text-on-surface',
+  super_admin: 'bg-primary-container text-primary-on-container',
   wilaya_admin: 'bg-tertiary/20 text-tertiary',
   establishment_manager: 'bg-secondary/20 text-secondary',
-  content_editor: 'bg-blue-100 text-blue-700',
-  attendance_staff: 'bg-orange-100 text-orange-700',
+  content_editor: 'bg-tertiary-container text-tertiary-on-container',
+  attendance_staff: 'bg-error-container text-error-on-container',
   youth: 'bg-surface-container text-on-surface-variant',
 }
 
@@ -120,7 +120,7 @@ function NavItemLink({
       className={cn(
         'flex items-center gap-3 rounded-xl px-3 py-2.5 text-label-sm font-semibold transition-all duration-150',
         isActive
-          ? 'bg-primary text-on-surface'
+          ? 'bg-primary-container text-primary-on-container'
           : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface',
         collapsed && 'justify-center px-2',
       )}
@@ -169,10 +169,10 @@ export function Sidebar() {
         )}
       >
         {collapsed ? (
-          <ChababiaLogo className="h-6 w-auto" fill="#2f6c00" />
+          <ChababiaLogo className="h-6 w-auto text-primary-container" />
         ) : (
           <div className="flex min-w-0 items-center gap-2.5">
-            <ChababiaLogo className="h-6 w-auto shrink-0" fill="#2f6c00" />
+            <ChababiaLogo className="h-6 w-auto shrink-0 text-primary-container" />
             <div className="min-w-0">
               <p className="truncate text-label-lg font-extrabold tracking-tight text-on-surface">
                 Chababia
@@ -232,7 +232,7 @@ export function Sidebar() {
         {collapsed ? (
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
-              <div className="flex h-10 w-10 cursor-default items-center justify-center rounded-xl bg-primary text-label-sm font-bold text-on-surface mx-auto">
+              <div className="mx-auto flex h-10 w-10 cursor-default items-center justify-center rounded-xl bg-primary-container text-label-sm font-bold text-primary-on-container">
                 {initials}
               </div>
             </TooltipTrigger>
@@ -240,7 +240,7 @@ export function Sidebar() {
           </Tooltip>
         ) : (
           <div className="flex items-center gap-2 rounded-xl px-2 py-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-on-surface">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-container text-xs font-bold text-primary-on-container">
               {initials}
             </div>
             <div className="min-w-0 flex-1">

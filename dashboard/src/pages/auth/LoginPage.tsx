@@ -104,14 +104,14 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-surface text-on-surface">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,1fr)_520px]">
-        <section className="relative hidden min-h-screen flex-col justify-between overflow-hidden border-r border-outline-variant bg-primary p-10 text-white lg:flex">
+        <section className="relative hidden min-h-screen flex-col justify-between overflow-hidden border-r border-outline-variant bg-surface-container-high p-10 text-on-surface lg:flex">
           {/* ── Decorative background layer ── */}
           <div className="pointer-events-none absolute inset-0">
             {/* Dot grid texture */}
             <svg className="absolute inset-0 h-full w-full opacity-[0.06]" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <pattern id="login-dots" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse">
-                  <circle cx="2" cy="2" r="1.5" fill="white" />
+                  <circle cx="2" cy="2" r="1.5" fill="currentColor" />
                 </pattern>
               </defs>
               <rect width="100%" height="100%" fill="url(#login-dots)" />
@@ -119,20 +119,20 @@ export default function LoginPage() {
 
             {/* Organic arc lines — echoing the logo's swooping curves */}
             <svg className="absolute inset-0 h-full w-full opacity-[0.09]" viewBox="0 0 700 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" fill="none">
-              <path d="M-80 720 Q180 320 760 80" stroke="white" strokeWidth="1.5" />
-              <path d="M-120 820 Q220 380 800 20" stroke="white" strokeWidth="0.8" />
-              <path d="M60 900 Q380 480 800 260" stroke="#9fe870" strokeWidth="1.2" opacity="0.7" />
-              <path d="M-40 580 Q300 200 760 180" stroke="#9fe870" strokeWidth="0.7" opacity="0.5" />
+              <path d="M-80 720 Q180 320 760 80" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M-120 820 Q220 380 800 20" stroke="currentColor" strokeWidth="0.8" />
+              <path d="M60 900 Q380 480 800 260" stroke="hsl(var(--primary-container))" strokeWidth="1.2" opacity="0.7" />
+              <path d="M-40 580 Q300 200 760 180" stroke="hsl(var(--primary-container))" strokeWidth="0.7" opacity="0.5" />
             </svg>
 
             {/* Large ghost logo — top-right, bleeding off edge */}
             <div className="absolute -right-16 -top-10 translate-x-4">
-              <ChababiaLogo className="h-60 w-auto opacity-[0.07]" fill="white" />
+              <ChababiaLogo className="h-60 w-auto opacity-[0.07]" />
             </div>
 
             {/* Medium ghost logo — bottom-left, slightly rotated */}
             <div className="absolute -bottom-6 -left-10 rotate-[8deg]">
-              <ChababiaLogo className="h-40 w-auto opacity-[0.12]" fill="#9fe870" />
+              <ChababiaLogo className="h-40 w-auto text-primary-container opacity-[0.12]" />
             </div>
 
             {/* Radial lime glow — top-left quadrant */}
@@ -143,28 +143,28 @@ export default function LoginPage() {
 
           {/* ── Content (above decorations) ── */}
           <div className="relative z-10 flex items-center gap-3">
-            <ChababiaLogo className="h-9 w-auto" fill="white" />
+            <ChababiaLogo className="h-9 w-auto text-primary-container" />
             <div>
               <p className="text-headline-sm font-black">Chababia</p>
-              <p className="text-body-sm text-white/70">Dashboard ODEJ</p>
+              <p className="text-body-sm text-on-surface-variant">Dashboard ODEJ</p>
             </div>
           </div>
           <div className="relative z-10 max-w-xl space-y-5">
             <p className="text-display-lg font-black leading-tight">
               Administration des opportunités jeunesse.
             </p>
-            <p className="text-body-lg text-white/75">
+            <p className="text-body-lg text-on-surface-variant">
               Connexion sécurisée pour les équipes ODEJ, les éditeurs, les responsables
               d'établissement et les superadmins.
             </p>
           </div>
-          <p className="relative z-10 text-body-sm text-white/60">ECOHACK '26 · Plateforme Chababia</p>
+          <p className="relative z-10 text-body-sm text-on-surface-variant">ECOHACK '26 · Plateforme Chababia</p>
         </section>
 
         <section className="flex min-h-screen items-center justify-center px-8 py-12">
           <div className="w-full max-w-sm space-y-8">
             <div className="space-y-3 lg:hidden">
-              <ChababiaLogo className="h-9 w-auto" fill="#2f6c00" />
+              <ChababiaLogo className="h-9 w-auto text-primary-container" />
               <div>
                 <p className="text-headline-sm font-black">Chababia</p>
                 <p className="text-body-sm text-on-surface-variant">Dashboard ODEJ</p>

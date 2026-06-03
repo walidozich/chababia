@@ -1,7 +1,8 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ChevronRight, Menu, LogOut, Settings, User } from 'lucide-react'
+import { ChevronRight, Menu, LogOut, Settings, User, Moon, Sun } from 'lucide-react'
 import { pb } from '@/lib/pb'
+import { getStoredTheme, saveTheme, type ThemeMode } from '@/lib/theme'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
 import {
@@ -70,6 +71,7 @@ export function Topbar() {
   const breadcrumbs = useBreadcrumbs()
   const navigate = useNavigate()
   const { role, isAdmin, userName: storedUserName, clearAuth } = useAuthStore()
+  const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
   const roleName = isAdmin ? 'super_admin' : role
   const roleLabel = roleName ? ROLE_LABELS[roleName] ?? roleName : 'Session'
 
@@ -87,6 +89,12 @@ export function Topbar() {
     pb.authStore.clear()
     clearAuth()
     void navigate('/login', { replace: true })
+  }
+
+  function toggleTheme() {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    saveTheme(next)
   }
 
   return (
@@ -124,6 +132,17 @@ export function Topbar() {
 
       {/* Right side */}
       <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          type="button"
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Activer le mode clair' : 'Activer le mode sombre'}
+          title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+        >
+          {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </Button>
+
         {/* Role badge */}
         <div className="hidden items-center gap-1.5 sm:flex">
           {isAdmin && (
@@ -139,7 +158,7 @@ export function Topbar() {
         {/* User dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-label-sm font-bold text-on-surface ring-offset-surface transition-all hover:ring-2 hover:ring-primary hover:ring-offset-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+            <button className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-container text-label-sm font-bold text-primary-on-container ring-offset-surface transition-all hover:ring-2 hover:ring-primary hover:ring-offset-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
               {initials}
             </button>
           </DropdownMenuTrigger>

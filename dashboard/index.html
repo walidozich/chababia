@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" class="dark" style="background-color: hsl(96 14% 7%); color-scheme: dark;">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -12,6 +12,14 @@
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap"
       rel="stylesheet"
     />
+    <script>
+      (() => {
+        const theme = localStorage.getItem('chababia-theme-v2') === 'light' ? 'light' : 'dark'
+        document.documentElement.classList.toggle('light', theme === 'light')
+        document.documentElement.classList.toggle('dark', theme === 'dark')
+        document.documentElement.style.colorScheme = theme
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
