@@ -1,0 +1,1073 @@
+openapi: 3.1.0
+
+info:
+  title: Chababia Backend API
+  version: 1.0.0
+  description: |
+    REST API for **Chababia** — the ODEJ Youth Opportunities Platform (ECOHACK '26).
+
+    Backend: **PocketBase 0.39.0** (single binary + SQLite). Every collection auto-exposes
+    the same 5 CRUD routes; access is decided by per-collection rules and the auth token on
+    each request. Custom hooks add server-side logic on top of the generic API:
+
+    - **registrations** — capacity enforcement (→ `waiting_list` when full) + 32-char QR token
+    - **reports** — report ownership + new-report status enforcement
+    - **audit** — `created_by` / `updated_by` stamping where the fields exist
+    - **cache_headers** — `Cache-Control` + weak `ETag`/`304` on public collection endpoints
+
+    Plus one custom route: `POST /api/admin/event-recommendations` (admin-only AI helper).
+
+    ## Authentication
+    Send the token returned by an `auth-with-password` call in the `Authorization` header.
+    PocketBase accepts the raw token (`Authorization: <token>`) — the `Bearer` prefix is optional.
+
+    ## Eco conventions (spec §13, §14, §21)
+    - **List vs detail**: use `?fields=` to fetch only card data in lists; full record only on view.
+    - **Pagination**: `?page=&perPage=` (default `perPage=10` recommended for clients).
+    - **Caching**: public GETs carry `Cache-Control`; send `If-None-Match` to get `304`.
+    - **Relations**: use `?expand=` to inline related records in one request.
+
+servers:
+  - url: http://127.0.0.1:8090
+    description: Local development
+  - url: https://api.chababia.dz
+    description: Production (placeholder)
+
+tags:
+  - name: Auth
+    description: Youth signup, login, token refresh, password reset
+  - name: Activities
+    description: Published opportunities (public read)
+  - name: Establishments
+    description: ODEJ youth facilities (public read)
+  - name: Categories
+    description: Activity categories (public read)
+  - name: Registrations
+    description: Activity registration + QR (auth, own-records only)
+  - name: Content
+    description: Announcements, newsletters, documents (public read)
+  - name: Engagement
+    description: Project submissions, talent showcase, content reports
+  - name: Translations
+    description: ar / fr / tzm translation rows (public read)
+  - name: Files
+    description: Image and document file access
+  - name: Admin
+    description: Admin-only custom endpoints
+
+security:
+  - bearerAuth: []
+
+paths:
+
+  # ───────────────────────── AUTH ─────────────────────────
+  /api/collections/users/records:
+    post:
+      tags: [Auth]
+      summary: Sign up a youth user
+      description: Public self-registration. `role` defaults to `youth`; clients should send `"youth"`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, passwordConfirm, full_name, role]
+              properties:
+                email:           { type: string, format: email }
+                password:        { type: string, minLength: 8 }
+                passwordConfirm: { type: string, minLength: 8 }
+                full_name:       { type: string }
+                role:            { type: string, enum: [youth] }
+                phone:           { type: string }
+                preferred_language: { type: string, enum: [ar, fr, tzm] }
+                commune:         { type: string }
+                wilaya:          { type: string }
+                interests:
+                  type: array
+                  items: { $ref: '#/components/schemas/CategoryName' }
+            example:
+              email: youth@example.dz
+              password: "Secret123!"
+              passwordConfirm: "Secret123!"
+              full_name: "Sara B."
+              role: youth
+              preferred_language: ar
+              commune: "Béjaïa"
+              wilaya: "Béjaïa"
+              interests: ["Sports", "Science"]
+      responses:
+        '200': { description: Created user record, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        '400': { $ref: '#/components/responses/ValidationError' }
+
+  /api/collections/users/auth-with-password:
+    post:
+      tags: [Auth]
+      summary: Youth login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identity, password]
+              properties:
+                identity: { type: string, description: email of the user }
+                password: { type: string }
+            example: { identity: youth@example.dz, password: "Secret123!" }
+      responses:
+        '200':
+          description: Auth token + record
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:  { type: string }
+                  record: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+
+  /api/collections/users/auth-refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh the auth token
+      responses:
+        '200':
+          description: Fresh token + record
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:  { type: string }
+                  record: { $ref: '#/components/schemas/User' }
+
+  /api/collections/users/request-password-reset:
+    post:
+      tags: [Auth]
+      summary: Request a password-reset email
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties: { email: { type: string, format: email } }
+      responses:
+        '204': { description: Reset email queued (always 204, even if email unknown) }
+
+  /api/collections/_superusers/auth-with-password:
+    post:
+      tags: [Auth]
+      summary: Superuser (admin) login
+      description: For the PocketBase Admin UI and admin-only endpoints. Superusers live in `_superusers`, not `users`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identity, password]
+              properties:
+                identity: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: Admin token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { token: { type: string } }
+
+  # ───────────────────────── ACTIVITIES ─────────────────────────
+  /api/collections/activities/records:
+    get:
+      tags: [Activities]
+      summary: List published activities
+      description: |
+        Public. Only `status = 'published'` rows are ever returned to anonymous/youth callers.
+        For the swipe-card deck, request a thin payload with `fields` (spec §10.3 / §14.1).
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/expand'
+        - $ref: '#/components/parameters/fields'
+        - name: filter
+          in: query
+          schema: { type: string }
+          description: |
+            PocketBase filter expression. Examples:
+            `commune='Béjaïa'`, `(category='CAT_ID' && is_free=true)`,
+            `start_datetime >= '2026-06-01'`.
+          example: "commune='Béjaïa'"
+      responses:
+        '200':
+          description: Paginated activity list
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            ETag:          { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActivityList' }
+        '304': { $ref: '#/components/responses/NotModified' }
+    post:
+      tags: [Activities]
+      summary: Create an activity (admin only)
+      description: Write rules are superuser-only. Anonymous/youth callers receive 400/403.
+      responses:
+        '200': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Activity' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/collections/activities/records/{id}:
+    parameters: [ { $ref: '#/components/parameters/recordId' } ]
+    get:
+      tags: [Activities]
+      summary: Get one activity (full detail)
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/expand'
+        - $ref: '#/components/parameters/fields'
+      responses:
+        '200':
+          description: Activity detail
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            ETag:          { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Activity' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ───────────────────────── ESTABLISHMENTS ─────────────────────────
+  /api/collections/establishments/records:
+    get:
+      tags: [Establishments]
+      summary: List published establishments
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/fields'
+        - name: filter
+          in: query
+          schema: { type: string }
+          example: "type='youth_house' && commune='Béjaïa'"
+      responses:
+        '200':
+          description: Paginated establishment list
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            ETag:          { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/Establishment' }
+        '304': { $ref: '#/components/responses/NotModified' }
+  /api/collections/establishments/records/{id}:
+    parameters: [ { $ref: '#/components/parameters/recordId' } ]
+    get:
+      tags: [Establishments]
+      summary: Get one establishment
+      security: []
+      responses:
+        '200': { description: Establishment, content: { application/json: { schema: { $ref: '#/components/schemas/Establishment' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ───────────────────────── CATEGORIES ─────────────────────────
+  /api/collections/categories/records:
+    get:
+      tags: [Categories]
+      summary: List categories
+      description: Fully public. Cache 7 days. Pair with `category_translations` for localized names.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Category list
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            ETag:          { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/Category' }
+        '304': { $ref: '#/components/responses/NotModified' }
+
+  # ───────────────────────── REGISTRATIONS ─────────────────────────
+  /api/collections/registrations/records:
+    get:
+      tags: [Registrations]
+      summary: List my registrations
+      description: Auth required. Rule `user = @request.auth.id` — you only ever see your own.
+      responses:
+        '200':
+          description: The caller's registrations
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/Registration' }
+    post:
+      tags: [Registrations]
+      summary: Register for an activity
+      description: |
+        Auth required. **Server-side hook behavior** (do not trust client input for these):
+        - `user` is forced to the authenticated user
+        - `status` is computed: `registered`, or `waiting_list` if the activity is at capacity
+        - `qr_code` is generated (32-char token) — render it as a QR client-side
+
+        The created record (with `status` + `qr_code`) is returned directly — no second call needed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [activity, full_name]
+              properties:
+                activity:  { type: string, description: activity record id }
+                full_name: { type: string }
+                phone:     { type: string }
+                email:     { type: string, format: email }
+            example: { activity: "ACT_ID", full_name: "Sara B.", phone: "0550000000" }
+      responses:
+        '200':
+          description: Created registration (status + qr_code populated by hook)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Registration' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ───────────────────────── CONTENT ─────────────────────────
+  /api/collections/announcements/records:
+    get:
+      tags: [Content]
+      summary: List published announcements
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+        - $ref: '#/components/parameters/sort'
+        - name: filter
+          in: query
+          schema: { type: string }
+          example: "priority='urgent'"
+      responses:
+        '200':
+          description: Announcement list
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            ETag:          { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/Announcement' }
+        '304': { $ref: '#/components/responses/NotModified' }
+
+  /api/collections/newsletters/records:
+    get:
+      tags: [Content]
+      summary: List published newsletters
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+        - name: filter
+          in: query
+          schema: { type: string }
+          example: "language='fr' && target_commune='Béjaïa'"
+      responses:
+        '200':
+          description: Newsletter list
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            ETag:          { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/Newsletter' }
+        '304': { $ref: '#/components/responses/NotModified' }
+
+  /api/collections/documents/records:
+    get:
+      tags: [Content]
+      summary: List published documents (PDF library)
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+        - name: filter
+          in: query
+          schema: { type: string }
+          example: "category='orientation' && language='fr'"
+      responses:
+        '200':
+          description: Document list
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            ETag:          { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/Document' }
+        '304': { $ref: '#/components/responses/NotModified' }
+
+  # ───────────────────────── ENGAGEMENT ─────────────────────────
+  /api/collections/project_submissions/records:
+    post:
+      tags: [Engagement]
+      summary: Submit a youth project idea
+      description: Auth required (`@request.auth.id != ''`). Callers can only read their own submissions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user, project_title, commune, short_description, contact_phone]
+              properties:
+                user:              { type: string, description: must equal the authenticated user id }
+                establishment:     { type: string }
+                project_title:     { type: string }
+                category:          { $ref: '#/components/schemas/CategoryName' }
+                commune:           { type: string }
+                short_description: { type: string }
+                needed_support:    { type: string }
+                contact_phone:     { type: string }
+      responses:
+        '200': { description: Created submission, content: { application/json: { schema: { $ref: '#/components/schemas/ProjectSubmission' } } } }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    get:
+      tags: [Engagement]
+      summary: List my project submissions
+      responses:
+        '200':
+          description: The caller's submissions
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/ProjectSubmission' }
+
+  /api/collections/talent_showcase/records:
+    get:
+      tags: [Engagement]
+      summary: List published talent showcase items
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Talent showcase list
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            ETag:          { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/TalentShowcase' }
+        '304': { $ref: '#/components/responses/NotModified' }
+
+  /api/collections/content_reports/records:
+    post:
+      tags: [Engagement]
+      summary: Report outdated or incorrect public content
+      description: |
+        Auth required. The server hook ignores client-supplied `reporter` and `status`:
+        - `reporter` is forced to the authenticated user
+        - `status` is forced to `new`
+
+        The review queue is private to superusers.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target_type, target_id, reason]
+              properties:
+                target_type: { type: string, enum: [activity, establishment, announcement, newsletter, document] }
+                target_id:   { type: string }
+                reason:      { type: string, enum: [outdated_info, wrong_contact, cancelled, wrong_location, other] }
+                details:     { type: string }
+            example:
+              target_type: activity
+              target_id: ACT_ID
+              reason: outdated_info
+              details: "The date shown no longer matches the ODEJ poster."
+      responses:
+        '200':
+          description: Created report
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContentReport' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    get:
+      tags: [Engagement]
+      summary: List content reports for staff review
+      description: Superuser-only review queue. Youth/admin-role users receive 403.
+      responses:
+        '200':
+          description: Content report list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/ContentReport' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ───────────────────────── TRANSLATIONS ─────────────────────────
+  /api/collections/activity_translations/records:
+    get:
+      tags: [Translations]
+      summary: Fetch activity translations
+      description: |
+        Public. To localize one activity, filter by parent + language, e.g.
+        `?filter=(activity='ACT_ID' && language='ar')`. One row per (activity, language).
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+        - name: filter
+          in: query
+          schema: { type: string }
+          example: "activity='ACT_ID' && language='ar'"
+      responses:
+        '200':
+          description: Translation rows
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            ETag:          { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/ActivityTranslation' }
+
+  /api/collections/establishment_translations/records:
+    get:
+      tags: [Translations]
+      summary: Fetch establishment translations
+      security: []
+      parameters:
+        - name: filter
+          in: query
+          schema: { type: string }
+          example: "establishment='EST_ID' && language='fr'"
+      responses:
+        '200':
+          description: Translation rows
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/EstablishmentTranslation' }
+
+  /api/collections/category_translations/records:
+    get:
+      tags: [Translations]
+      summary: Fetch category translations
+      description: Public, cache 7 days. Fetch all once, map locally by `category` + `language`.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/perPage'
+        - name: filter
+          in: query
+          schema: { type: string }
+          example: "language='ar'"
+      responses:
+        '200':
+          description: Translation rows
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/CategoryTranslation' }
+
+  # ───────────────────────── FILES ─────────────────────────
+  /api/files/{collection}/{recordId}/{filename}:
+    get:
+      tags: [Files]
+      summary: Download a file (image / PDF)
+      description: |
+        For images, append `?thumb=400x0` (or `100x100`) to get the pre-generated WebP thumbnail
+        instead of the full file (spec §13.4 — eco). The `filename` is the value of the record's
+        file field (e.g. `record.image`).
+      security: []
+      parameters:
+        - { name: collection, in: path, required: true, schema: { type: string } }
+        - { name: recordId,   in: path, required: true, schema: { type: string } }
+        - { name: filename,   in: path, required: true, schema: { type: string } }
+        - name: thumb
+          in: query
+          required: false
+          schema: { type: string, enum: ["400x0", "100x100"] }
+      responses:
+        '200': { description: File bytes, content: { application/octet-stream: { schema: { type: string, format: binary } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ───────────────────────── ADMIN CUSTOM ─────────────────────────
+  /api/admin/event-recommendations:
+    post:
+      tags: [Admin]
+      summary: AI event-recommendation helper (admin only)
+      description: |
+        Custom hook route (`pb_hooks/recommendations.pb.js`). Returns **draft** activity ideas
+        for staff to review — never auto-published (spec §12.6, §18).
+
+        Behavior:
+        - **Auth**: superuser or a user with role `super_admin`/`wilaya_admin`/`establishment_manager`/`content_editor`. Others → 403.
+        - **Cache**: identical `commune`+`wilaya`+`establishment_type` returns the stored result with `cached: true` (no AI call).
+        - **Rate limit**: 10 requests per admin account → 429 when exceeded.
+        - **Mock fallback**: if the AI provider is unavailable, returns realistic fallback drafts with `mock: true`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [commune, wilaya]
+              properties:
+                commune:            { type: string }
+                wilaya:             { type: string }
+                establishment_type: { $ref: '#/components/schemas/EstablishmentType' }
+            example: { commune: "Béjaïa", wilaya: "Béjaïa", establishment_type: youth_house }
+      responses:
+        '200':
+          description: Draft suggestions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cached:     { type: boolean }
+                  mock:       { type: boolean, description: true when AI was unavailable and fallback drafts were returned }
+                  request_id: { type: string }
+                  suggestions:
+                    type: array
+                    items: { $ref: '#/components/schemas/Suggestion' }
+              example:
+                cached: false
+                mock: true
+                request_id: "REC_ID"
+                suggestions:
+                  - title: "Atelier Sécurité Numérique"
+                    short_description: "Sensibilisation aux risques d'Internet et bonnes pratiques numériques."
+                    category: "Coding"
+                    activity_mode: "physical"
+                    age_min: 14
+                    age_max: 30
+                    is_free: true
+                    estimated_duration: "3h"
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { description: Rate limit reached (10 per account), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '501': { description: AI not configured (no ANTHROPIC_API_KEY), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '502': { description: AI service unreachable/error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: PocketBase auth token. The `Bearer` prefix is optional — the raw token is also accepted.
+
+  parameters:
+    recordId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    page:
+      name: page
+      in: query
+      schema: { type: integer, default: 1, minimum: 1 }
+    perPage:
+      name: perPage
+      in: query
+      schema: { type: integer, default: 30, maximum: 500 }
+      description: Clients should use 10 for list/card screens (eco).
+    sort:
+      name: sort
+      in: query
+      schema: { type: string }
+      description: "Comma-separated fields, prefix `-` for desc. e.g. `-start_datetime`."
+      example: "-start_datetime"
+    expand:
+      name: expand
+      in: query
+      schema: { type: string }
+      description: "Comma-separated relation fields to inline. e.g. `category,establishment`."
+      example: "category,establishment"
+    fields:
+      name: fields
+      in: query
+      schema: { type: string }
+      description: |
+        Comma-separated whitelist to shrink the payload (eco — spec §14.1).
+        e.g. `id,title,short_description,start_datetime,image`.
+      example: "id,title,short_description,start_datetime,image,is_free"
+
+  headers:
+    CacheControl:
+      description: "Per-collection cache policy (spec §13.3)."
+      schema: { type: string, example: "public, max-age=1800" }
+    ETag:
+      description: Weak ETag (from latest record id). Echo back via `If-None-Match` for a 304.
+      schema: { type: string, example: 'W/"zlng0cy4wafdh4d"' }
+
+  responses:
+    NotModified:
+      description: Resource unchanged since the supplied `If-None-Match` ETag.
+    NotFound:
+      description: Record not found, or hidden by access rules (drafts return 404 to anon).
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Forbidden:
+      description: Insufficient permissions for this operation.
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    ValidationError:
+      description: Invalid request body or query.
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  schemas:
+
+    Error:
+      type: object
+      properties:
+        status:  { type: integer }
+        message: { type: string }
+        data:    { type: object, additionalProperties: true }
+      example: { status: 403, message: "Insufficient permissions. Admin role required.", data: {} }
+
+    Paginated:
+      type: object
+      properties:
+        page:       { type: integer }
+        perPage:    { type: integer }
+        totalItems: { type: integer }
+        totalPages: { type: integer }
+        items:      { type: array, items: { type: object } }
+
+    CategoryName:
+      type: string
+      enum: [Sports, Culture, Training, Volunteering, "Health Awareness", Science, Arts,
+             Environment, "Youth Orientation", "Camps and Trips", Coding, Design, Robotics,
+             Photography, Debate]
+
+    EstablishmentType:
+      type: string
+      enum: [youth_house, youth_hostel, sports_complex, youth_camp, polyvalent_hall, scientific_leisure_center]
+
+    Language:
+      type: string
+      enum: [ar, fr, tzm]
+
+    User:
+      type: object
+      properties:
+        id:                 { type: string }
+        email:              { type: string, format: email }
+        full_name:          { type: string }
+        phone:              { type: string }
+        role:               { type: string, enum: [youth, super_admin, wilaya_admin, establishment_manager, content_editor, attendance_staff] }
+        preferred_language: { $ref: '#/components/schemas/Language' }
+        commune:            { type: string }
+        wilaya:             { type: string }
+        interests:          { type: array, items: { $ref: '#/components/schemas/CategoryName' } }
+        verified:           { type: boolean }
+
+    Category:
+      type: object
+      properties:
+        id:     { type: string }
+        name:   { type: string }
+        icon:   { type: string }
+        status: { type: string, enum: [active, inactive] }
+
+    Establishment:
+      type: object
+      properties:
+        id:                  { type: string }
+        name:                { type: string }
+        type:                { $ref: '#/components/schemas/EstablishmentType' }
+        commune:             { type: string }
+        wilaya:              { type: string }
+        address:             { type: string }
+        latitude:            { type: number }
+        longitude:           { type: number }
+        phone:               { type: string }
+        email:               { type: string }
+        opening_hours:       { type: string }
+        services:            { type: string }
+        accessibility_notes: { type: string }
+        image:               { type: string, description: filename — see /api/files }
+        status:              { type: string, enum: [draft, published, archived] }
+        last_verified_at:    { type: string, format: date-time }
+
+    Activity:
+      type: object
+      properties:
+        id:                    { type: string }
+        title:                 { type: string }
+        short_description:     { type: string }
+        full_description:      { type: string }
+        commune:               { type: string, description: denormalized for fast filtering }
+        wilaya:                { type: string }
+        category:              { type: string, description: relation id (expandable) }
+        establishment:         { type: string, description: relation id (expandable) }
+        activity_mode:         { type: string, enum: [physical, online, hybrid] }
+        online_link:           { type: string }
+        start_datetime:        { type: string, format: date-time }
+        end_datetime:          { type: string, format: date-time }
+        registration_deadline: { type: string, format: date-time }
+        capacity:              { type: integer }
+        requires_registration: { type: boolean }
+        is_free:               { type: boolean }
+        age_min:               { type: integer }
+        age_max:               { type: integer }
+        language:              { type: string, enum: [ar, fr, tzm, mixed] }
+        accessibility_notes:   { type: string }
+        required_documents:    { type: string }
+        bandwidth_level:       { type: string, enum: [low, medium, high] }
+        replay_available:      { type: boolean }
+        image:                 { type: string }
+        contact_phone:         { type: string }
+        contact_email:         { type: string }
+        status:                { type: string, enum: [draft, published, cancelled, archived] }
+        last_verified_at:      { type: string, format: date-time }
+        expand:                { type: object, description: "present when ?expand= is used", additionalProperties: true }
+
+    ActivityList:
+      allOf:
+        - $ref: '#/components/schemas/Paginated'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Activity' }
+
+    Registration:
+      type: object
+      properties:
+        id:            { type: string }
+        user:          { type: string }
+        activity:      { type: string }
+        full_name:     { type: string }
+        phone:         { type: string }
+        email:         { type: string }
+        status:        { type: string, enum: [registered, waiting_list, cancelled, attended], description: set by server hook }
+        qr_code:       { type: string, description: 32-char token, generated server-side }
+        checked_in_at: { type: string, format: date-time }
+
+    Announcement:
+      type: object
+      properties:
+        id:                    { type: string }
+        title:                 { type: string }
+        content:               { type: string }
+        priority:              { type: string, enum: [normal, high, urgent] }
+        related_establishment: { type: string }
+        related_activity:      { type: string }
+        language:              { type: string }
+        status:                { type: string, enum: [draft, published, archived] }
+        last_verified_at:      { type: string, format: date-time }
+
+    Newsletter:
+      type: object
+      properties:
+        id:                    { type: string }
+        title:                 { type: string }
+        content:               { type: string }
+        language:              { type: string }
+        target_commune:        { type: string }
+        target_wilaya:         { type: string }
+        related_activity:      { type: string }
+        related_establishment: { type: string }
+        thumbnail:             { type: string }
+        status:                { type: string, enum: [draft, published, archived] }
+        published_at:          { type: string, format: date-time }
+        last_verified_at:      { type: string, format: date-time }
+
+    Document:
+      type: object
+      properties:
+        id:            { type: string }
+        title:         { type: string }
+        description:   { type: string }
+        file:          { type: string, description: PDF filename — see /api/files }
+        language:      { type: string }
+        category:      { type: string }
+        establishment: { type: string }
+        status:        { type: string, enum: [draft, published, archived] }
+        last_verified_at: { type: string, format: date-time }
+
+    ProjectSubmission:
+      type: object
+      properties:
+        id:                { type: string }
+        user:              { type: string }
+        establishment:     { type: string }
+        project_title:     { type: string }
+        category:          { $ref: '#/components/schemas/CategoryName' }
+        commune:           { type: string }
+        short_description: { type: string }
+        needed_support:    { type: string }
+        contact_phone:     { type: string }
+        optional_document: { type: string }
+        status:            { type: string, enum: [submitted, reviewed, accepted, rejected, needs_more_info] }
+        assigned_mentor:   { type: string }
+
+    TalentShowcase:
+      type: object
+      properties:
+        id:            { type: string }
+        user:          { type: string }
+        title:         { type: string }
+        description:   { type: string }
+        category:      { $ref: '#/components/schemas/CategoryName' }
+        media:         { type: string }
+        external_link: { type: string }
+        status:        { type: string, enum: [draft, published, archived] }
+        published_at:  { type: string, format: date-time }
+        last_verified_at: { type: string, format: date-time }
+
+    ContentReport:
+      type: object
+      properties:
+        id:          { type: string }
+        reporter:    { type: string, description: forced to the authenticated user by server hook }
+        target_type: { type: string, enum: [activity, establishment, announcement, newsletter, document] }
+        target_id:   { type: string }
+        reason:      { type: string, enum: [outdated_info, wrong_contact, cancelled, wrong_location, other] }
+        details:     { type: string }
+        status:      { type: string, enum: [new, reviewed, resolved, dismissed], description: new on user create; superuser updates during review }
+        created_by:  { type: string }
+        updated_by:  { type: string }
+
+    ActivityTranslation:
+      type: object
+      properties:
+        id:                { type: string }
+        activity:          { type: string }
+        language:          { $ref: '#/components/schemas/Language' }
+        title:             { type: string }
+        short_description: { type: string }
+        full_description:  { type: string }
+
+    EstablishmentTranslation:
+      type: object
+      properties:
+        id:                 { type: string }
+        establishment:      { type: string }
+        language:           { $ref: '#/components/schemas/Language' }
+        description:        { type: string }
+        services_text:      { type: string }
+        accessibility_text: { type: string }
+
+    CategoryTranslation:
+      type: object
+      properties:
+        id:       { type: string }
+        category: { type: string }
+        language: { $ref: '#/components/schemas/Language' }
+        name:     { type: string }
+
+    Suggestion:
+      type: object
+      description: A draft activity idea (planning only — never a real scheduled event).
+      properties:
+        title:              { type: string }
+        short_description:  { type: string }
+        category:           { $ref: '#/components/schemas/CategoryName' }
+        activity_mode:      { type: string, enum: [physical, online, hybrid] }
+        age_min:            { type: integer }
+        age_max:            { type: integer }
+        is_free:            { type: boolean }
+        estimated_duration: { type: string }
