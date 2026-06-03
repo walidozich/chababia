@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { View, Text, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { colors, typography, spacing, rounded } from '../design-system';
 import { Badge } from './Badge';
@@ -14,7 +15,7 @@ interface TicketCardProps {
   style?: StyleProp<ViewStyle>;
 }
 
-export function TicketCard({
+export const TicketCard = memo(function TicketCard({
   rsvpId,
   eventTitle,
   eventCode,
@@ -60,7 +61,7 @@ export function TicketCard({
       {qrCode ? <View style={styles.qrContainer}>{qrCode}</View> : null}
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

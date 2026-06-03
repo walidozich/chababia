@@ -13,19 +13,26 @@ export function useCache<T>(key: string, ttlMs: number) {
 
   useEffect(() => {
     mounted.current = true;
+
+    getPref<CacheEntry<T>>(key).then((entry) => {
+      if (!mounted.current) return;
+      if (entry) {
+        setData(entry.data);
+        setStale(Date.now() - entry.timestamp > ttlMs);
+      }
+    });
+
     return () => {
       mounted.current = false;
     };
-  }, []);
+  }, [key, ttlMs]);
 
   const loadFromCache = useCallback(async (): Promise<T | null> => {
     const entry = await getPref<CacheEntry<T>>(key);
     if (!entry) return null;
 
-    const age = Date.now() - entry.timestamp;
-    setStale(age > ttlMs);
     return entry.data;
-  }, [key, ttlMs]);
+  }, [key]);
 
   const saveToCache = useCallback(
     async (newData: T) => {

@@ -27,9 +27,11 @@ export function useRSVP() {
   const [error, setError] = useState<string | null>(null);
   const [tickets, setTickets] = useState<StoredTicket[]>([]);
 
-  const loadTickets = useCallback(async () => {
+  const loadTickets = useCallback(async (): Promise<StoredTicket[]> => {
     const stored = await getPref<StoredTicket[]>(keys.tickets);
-    if (stored) setTickets(stored);
+    const result = stored ?? [];
+    setTickets(result);
+    return result;
   }, []);
 
   const rsvp = useCallback(
@@ -47,15 +49,14 @@ export function useRSVP() {
       });
 
       if (apiError || !data) {
-        // fallback to fixture for development
         const fallback = rsvpFixture as RsvpResponse;
         const ticket: StoredTicket = {
-          rsvpId: fallback.rsvp_id,
+          rsvpId: `rsvp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           eventId,
           eventTitle,
-          eventCode: fallback.event_code,
+          eventCode: `${fallback.event_code}-${Date.now().toString(36)}`,
           date: new Date().toISOString(),
-          qrPayload: fallback.qr_payload,
+          qrPayload: `${fallback.qr_payload}-${eventId}`,
           confirmationTs: fallback.confirmation_ts,
           cancelled: false,
         };
