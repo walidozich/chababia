@@ -3,17 +3,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { typography, spacing, colors } from '@/src/design-system';
 import { SectionHeader } from '@/src/components/SectionHeader';
 
-export default function OpportunitiesScreen() {
+export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <SectionHeader
-        title="Opportunités"
-        subtitle="Découvre les activités près de chez toi"
-        accessibilityLabel="Liste des opportunités"
+        title="Paramètres"
+        subtitle="Personnalise ton expérience"
+        accessibilityLabel="Paramètres de l'application"
       />
       <View style={styles.empty}>
         <Text style={styles.emptyText} maxFontSizeMultiplier={1.3}>
-          Phase 4 — Discovery
+          Phase 6 — Settings & Accessibility
         </Text>
       </View>
     </SafeAreaView>

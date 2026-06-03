@@ -1,0 +1,73 @@
+{
+  "onboarding": {
+    "language": {
+      "title": "Bienvenue sur Chababia",
+      "subtitle": "Choisis ta langue",
+      "continue": "Continuer"
+    },
+    "interests": {
+      "title": "Qu'est-ce qui t'intéresse ?",
+      "subtitle": "Choisis au moins un centre d'intérêt",
+      "sport": "Sport",
+      "culture": "Culture",
+      "formation": "Formation",
+      "loisirs": "Loisirs",
+      "musique": "Musique",
+      "benevolat": "Bénévolat",
+      "continue": "Continuer",
+      "select_at_least_one": "Sélectionne au moins un intérêt"
+    },
+    "radius": {
+      "title": "Jusqu'où veux-tu chercher ?",
+      "subtitle": "On a besoin de ta position pour te montrer les opportunités proches",
+      "km1": "1 km",
+      "km2": "2 km",
+      "km5": "5 km",
+      "location_explanation": "Ta position n'est utilisée qu'une seule fois pour filtrer les résultats. Elle n'est jamais envoyée à un serveur tiers.",
+      "continue": "Commencer",
+      "permission_denied": "Sans la localisation, on ne peut pas trier par distance. Tu pourras chercher manuellement."
+    }
+  },
+  "discovery": {
+    "title": "Opportunités",
+    "search_placeholder": "Rechercher...",
+    "no_results": "Aucune opportunité trouvée",
+    "pull_to_refresh": "Tirer pour actualiser",
+    "offline_banner": "Données du {{date}} — hors connexion"
+  },
+  "detail": {
+    "rsvp_button": "Je participe",
+    "rsvp_cancel": "Annuler mon inscription",
+    "rsvp_confirmed": "Inscription confirmée !",
+    "open_in_maps": "Ouvrir dans Maps",
+    "places_left": "places restantes",
+    "address": "Adresse",
+    "contact": "Contact",
+    "description": "Description",
+    "date": "Date"
+  },
+  "tickets": {
+    "title": "Mes billets",
+    "empty_state": "Aucun billet pour le moment.\nInscris-toi à une opportunité !",
+    "upcoming": "À venir",
+    "past": "Passés",
+    "cancel": "Annuler",
+    "cancelled": "Annulé"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "language": "Langue",
+    "radius": "Rayon de recherche",
+    "interests": "Centres d'intérêt",
+    "about": "À propos"
+  },
+  "common": {
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "back": "Retour",
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue",
+    "retry": "Réessayer",
+    "close": "Fermer"
+  }
+}
