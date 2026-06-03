@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Upload, X, FileText, ImageIcon } from 'lucide-react'
+import { Upload, X, FileText, ImageIcon, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface FileUploadProps {
@@ -16,6 +16,72 @@ const IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp'
 const PDF_ACCEPT = 'application/pdf'
 const IMAGE_MAX_KB = 300
 const PDF_MAX_KB = 10 * 1024
+// Resize to fit within this box before encoding
+const IMAGE_MAX_DIM = 1200
+// WebP quality — 0.82 gives ~60-70% smaller than raw JPEG at similar visual quality
+const IMAGE_QUALITY = 0.82
+
+/**
+ * Resize + encode to WebP (falls back to JPEG if browser lacks WebP canvas support).
+ * Uses createObjectURL to avoid doubling memory with a FileReader data URL.
+ */
+async function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const objectUrl = URL.createObjectURL(file)
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl)
+
+      let w = img.naturalWidth
+      let h = img.naturalHeight
+
+      if (w > IMAGE_MAX_DIM || h > IMAGE_MAX_DIM) {
+        if (w >= h) {
+          h = Math.round((h * IMAGE_MAX_DIM) / w)
+          w = IMAGE_MAX_DIM
+        } else {
+          w = Math.round((w * IMAGE_MAX_DIM) / h)
+          h = IMAGE_MAX_DIM
+        }
+      }
+
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('canvas-ctx'))
+        return
+      }
+
+      ctx.drawImage(img, 0, 0, w, h)
+
+      const webp = canvas.toDataURL('image/webp', IMAGE_QUALITY)
+      // Some older browsers silently ignore 'image/webp' and return a PNG.
+      // If the result is not WebP, fall back to JPEG.
+      resolve(
+        webp.startsWith('data:image/webp')
+          ? webp
+          : canvas.toDataURL('image/jpeg', IMAGE_QUALITY),
+      )
+    }
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('img-load'))
+    }
+
+    img.src = objectUrl
+  })
+}
+
+/** Returns the decoded byte size of a base64 data URL in KB. */
+function dataUrlSizeKb(dataUrl: string): number {
+  const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
+  return Math.ceil((base64.length * 3) / 4 / 1024)
+}
 
 export function FileUpload({
   accept,
@@ -29,11 +95,33 @@ export function FileUpload({
   const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string>()
   const [isDragging, setIsDragging] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const maxKb = maxSizeKb ?? (accept === 'image' ? IMAGE_MAX_KB : PDF_MAX_KB)
+  const isImage = accept === 'image'
 
-  function handleFile(file: File) {
+  async function handleFile(file: File) {
     setError(undefined)
+
+    if (isImage) {
+      setIsProcessing(true)
+      try {
+        const compressed = await compressImage(file)
+        const sizeKb = dataUrlSizeKb(compressed)
+        if (sizeKb > maxKb) {
+          setError(`Image trop volumineuse après compression (${sizeKb} Ko, max ${maxKb} Ko)`)
+          return
+        }
+        onChange?.(compressed)
+      } catch {
+        setError('Impossible de traiter cette image')
+      } finally {
+        setIsProcessing(false)
+      }
+      return
+    }
+
+    // PDF — no compression, just size guard then pass through as data URL
     const sizeKb = file.size / 1024
     if (sizeKb > maxKb) {
       setError(`Fichier trop volumineux (max ${maxKb >= 1024 ? `${maxKb / 1024} Mo` : `${maxKb} Ko`})`)
@@ -46,7 +134,7 @@ export function FileUpload({
 
   function handleInput(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (file) handleFile(file)
+    if (file) void handleFile(file)
     e.target.value = ''
   }
 
@@ -54,20 +142,21 @@ export function FileUpload({
     e.preventDefault()
     setIsDragging(false)
     const file = e.dataTransfer.files[0]
-    if (file) handleFile(file)
+    if (file) void handleFile(file)
   }
 
-  const hasValue = Boolean(value)
-  const isImage = accept === 'image'
+  const busy = disabled || isProcessing
 
   return (
     <div className={cn('space-y-2', className)}>
-      {hasValue ? (
+      {value ? (
         <div className="relative inline-block">
           {isImage ? (
             <img
               src={value}
               alt="Aperçu"
+              loading="lazy"
+              decoding="async"
               className="h-32 w-48 rounded-xl object-cover border border-outline"
             />
           ) : (
@@ -89,30 +178,38 @@ export function FileUpload({
       ) : (
         <button
           type="button"
-          onClick={() => inputRef.current?.click()}
-          onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+          onClick={() => { if (!busy) inputRef.current?.click() }}
+          onDragOver={(e) => { e.preventDefault(); if (!busy) setIsDragging(true) }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
-          disabled={disabled}
+          disabled={busy}
           className={cn(
             'flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 text-center transition-colors',
             isDragging
               ? 'border-primary-container bg-primary-container/10'
               : 'border-outline hover:border-primary-container hover:bg-primary-container/5',
-            disabled && 'cursor-not-allowed opacity-50',
+            busy && 'cursor-not-allowed opacity-60',
           )}
         >
-          {isImage ? (
+          {isProcessing ? (
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          ) : isImage ? (
             <ImageIcon className="h-8 w-8 text-on-surface-variant/50" />
           ) : (
             <Upload className="h-8 w-8 text-on-surface-variant/50" />
           )}
           <div>
             <p className="text-label-sm font-semibold text-on-surface">
-              {isImage ? 'Cliquer ou glisser une image' : 'Cliquer ou glisser un PDF'}
+              {isProcessing
+                ? 'Compression WebP en cours…'
+                : isImage
+                  ? 'Cliquer ou glisser une image'
+                  : 'Cliquer ou glisser un PDF'}
             </p>
             <p className="text-xs text-on-surface-variant">
-              {isImage ? `JPG, PNG, WebP — max ${maxKb} Ko` : `PDF — max ${maxKb / 1024} Mo`}
+              {isImage
+                ? `JPG · PNG · WebP — compression automatique WebP, max ${maxKb} Ko`
+                : `PDF — max ${maxKb / 1024} Mo`}
             </p>
           </div>
         </button>
@@ -124,7 +221,7 @@ export function FileUpload({
         accept={isImage ? IMAGE_ACCEPT : PDF_ACCEPT}
         className="sr-only"
         onChange={handleInput}
-        disabled={disabled}
+        disabled={busy}
       />
     </div>
   )

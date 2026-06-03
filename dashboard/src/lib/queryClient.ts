@@ -23,6 +23,9 @@ export const queryClient = new QueryClient({
         return failureCount < 1
       },
       refetchOnWindowFocus: false,
+      // Keep inactive cache entries in memory for 30 min so navigating between
+      // pages doesn't re-fetch data that is still within its staleTime window.
+      gcTime: 30 * 60 * 1000,
     },
     mutations: {
       retry: 0,
