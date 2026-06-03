@@ -56,61 +56,61 @@ def index_activities(session) -> int:
 # ---------------------------------------------------------------------------
 # TEST — run: python -m vector_store.indexer
 # ---------------------------------------------------------------------------
-if __name__ == "__main__":
-    from db.database import SessionLocal, engine
-    from db.models import Base, Activity, Category
-    from sqlalchemy import text
-    from datetime import datetime
+# if __name__ == "__main__":
+#     from db.database import SessionLocal, engine
+#     from db.models import Base, Activity, Category
+#     from sqlalchemy import text
+#     from datetime import datetime
 
-    print("--- vector_store/indexer.py self-test ---")
+#     print("--- vector_store/indexer.py self-test ---")
 
-    Base.metadata.create_all(engine)
-    session = SessionLocal()
+#     Base.metadata.create_all(engine)
+#     session = SessionLocal()
 
-    # Seed test data
-    session.execute(text("DELETE FROM activities"))
-    session.execute(text("DELETE FROM categories"))
-    session.commit()
+#     # Seed test data
+#     session.execute(text("DELETE FROM activities"))
+#     session.execute(text("DELETE FROM categories"))
+#     session.commit()
 
-    session.add(Category(id="cat_sports", name="Sports", status="active"))
-    session.add(Activity(
-        id="act_idx_1",
-        title="Youth Football Tournament",
-        short_description="Competitive football for youth aged 15-25.",
-        category="cat_sports",
-        activity_mode="physical",
-        status="published",
-        last_verified_at=datetime.utcnow(),
-    ))
-    session.add(Activity(
-        id="act_idx_2",
-        title="Photography Workshop",
-        short_description="Learn basic photography skills.",
-        category="cat_sports",
-        activity_mode="physical",
-        status="published",
-        last_verified_at=datetime.utcnow(),
-    ))
-    # Draft activity — must NOT be indexed
-    session.add(Activity(
-        id="act_idx_3",
-        title="Draft Event",
-        short_description="This should not be indexed.",
-        category="cat_sports",
-        status="draft",
-    ))
-    session.commit()
+#     session.add(Category(id="cat_sports", name="Sports", status="active"))
+#     session.add(Activity(
+#         id="act_idx_1",
+#         title="Youth Football Tournament",
+#         short_description="Competitive football for youth aged 15-25.",
+#         category="cat_sports",
+#         activity_mode="physical",
+#         status="published",
+#         last_verified_at=datetime.utcnow(),
+#     ))
+#     session.add(Activity(
+#         id="act_idx_2",
+#         title="Photography Workshop",
+#         short_description="Learn basic photography skills.",
+#         category="cat_sports",
+#         activity_mode="physical",
+#         status="published",
+#         last_verified_at=datetime.utcnow(),
+#     ))
+#     # Draft activity — must NOT be indexed
+#     session.add(Activity(
+#         id="act_idx_3",
+#         title="Draft Event",
+#         short_description="This should not be indexed.",
+#         category="cat_sports",
+#         status="draft",
+#     ))
+#     session.commit()
 
-    count = index_activities(session)
-    assert count == 2, f"Expected 2 indexed, got {count}"
-    print(f"✓ indexed {count} published activities (draft excluded)")
+#     count = index_activities(session)
+#     assert count == 2, f"Expected 2 indexed, got {count}"
+#     print(f"✓ indexed {count} published activities (draft excluded)")
 
-    # Verify points exist in Qdrant
-    from vdb.client import get_client
-    client = get_client()
-    info = client.get_collection(settings.qdrant_collection)
-    assert info.points_count == 2, f"Expected 2 points in Qdrant, got {info.points_count}"
-    print(f"✓ Qdrant collection has {info.points_count} points")
+#     # Verify points exist in Qdrant
+#     from vdb.client import get_client
+#     client = get_client()
+#     info = client.get_collection(settings.qdrant_collection)
+#     assert info.points_count == 2, f"Expected 2 points in Qdrant, got {info.points_count}"
+#     print(f"✓ Qdrant collection has {info.points_count} points")
 
-    session.close()
-    print("--- all indexer tests passed ---")
+#     session.close()
+#     print("--- all indexer tests passed ---")

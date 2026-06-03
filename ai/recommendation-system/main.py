@@ -4,23 +4,39 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from api.router import api_router
 from vdb.collections import ensure_collection_exists
-from db.database import engine
+from vdb.indexer import index_activities
+from db.database import engine, SessionLocal
 from db.models import Base
+import os
+
+# Tell HuggingFace to use cached model only — no network calls
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+os.environ["HF_DATASETS_OFFLINE"] = "1"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("[startup] Creating DB tables if needed...")
     Base.metadata.create_all(engine)
+
     print("[startup] Ensuring Qdrant collection exists...")
     ensure_collection_exists()
-    print("[startup] Ready.")
+
+    print("[startup] Indexing published activities into Qdrant...")
+    session = SessionLocal()
+    try:
+        count = index_activities(session)
+        print(f"[startup] {count} activities indexed and ready.")
+    finally:
+        session.close()
+
     yield
+    # in-memory Qdrant is discarded on shutdown — re-indexed on next startup
 
 
 app = FastAPI(
     title="Chababia Recommendation Service",
-    description="Personalized activity feed for youth users.",
+    description="Personalised activity feed for youth users.",
     version="0.2.0",
     lifespan=lifespan,
 )
@@ -42,16 +58,15 @@ if __name__ == "__main__":
     print("--- main.py self-test ---")
     client = TestClient(app)
 
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    r = client.get("/health")
+    assert r.status_code == 200
+    assert r.json() == {"status": "ok"}
     print("✓ GET /health returns 200")
 
     schema = client.get("/openapi.json")
     assert schema.status_code == 200
-    paths = schema.json()["paths"]
-    assert "/api/feed/{user_id}" in paths
-    print("✓ /api/feed/{user_id} present in OpenAPI schema")
+    assert "/api/feed/{user_id}" in schema.json()["paths"]
+    print("✓ /api/feed/{user_id} in OpenAPI schema")
 
     print("--- all main tests passed ---")
     print("\nTo run the server:")

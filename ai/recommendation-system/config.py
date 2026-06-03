@@ -1,27 +1,26 @@
-# Settings (DB path, Qdrant URL, model name, etc.)
-
 from pydantic_settings import BaseSettings
 from pathlib import Path
 
+BASE_DIR = Path(__file__).resolve().parent
+
+# ai/recommendation-system -> project-root
+PROJECT_ROOT = BASE_DIR.parent.parent
+
+DB_PATH = PROJECT_ROOT / "backend" / "pb_data" / "data.db"
+
 
 class Settings(BaseSettings):
-    # --- Database ---
-    sqlite_path: str = "./chababia.db"
+    sqlite_path: str = str(DB_PATH)
 
-    # --- Qdrant (local in-memory, no server needed) ---
     qdrant_collection: str = "activities"
-    qdrant_vector_size: int = 384  # matches MiniLM-L12-v2 output
+    qdrant_vector_size: int = 384
 
-    # --- Embedding model ---
-    # multilingual, covers Arabic + French, ~120MB, CPU-friendly
     embedding_model: str = "paraphrase-multilingual-MiniLM-L12-v2"
 
-    # --- Cache ---
-    cache_ttl_seconds: int = 3600   # 1 hour
-    cache_max_size: int = 128       # max cached request entries
+    cache_ttl_seconds: int = 3600
+    cache_max_size: int = 128
 
-    # --- Recommendation ---
-    recommendation_top_k: int = 5   # how many similar activities to retrieve
+    recommendation_top_k: int = 5
 
     class Config:
         env_file = ".env"
