@@ -7,7 +7,7 @@ CHANGELOG.md
 LICENSE.md
 
 # PocketBase runtime data (SQLite databases, generated types, notify state)
-
+pb_data/
 
 # OS / editor noise
 .DS_Store
