@@ -806,7 +806,7 @@ function VerifiedIndicator({ date }: { date: string }) {
 > The UI is validated. This phase swaps every mock import for real PocketBase queries.  
 > Component props stay identical — only the data source changes.
 
-### 6a · Login page
+### 6a · Login page ✓ DONE
 
 **File to create:** `src/pages/auth/LoginPage.tsx`
 

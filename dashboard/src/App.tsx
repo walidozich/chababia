@@ -2,12 +2,14 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { AuthGuard } from '@/components/layout/AuthGuard'
 import { PageSkeleton } from '@/components/shared/LoadingSkeletons'
 
 // ─── Pages ───────────────────────────────────────────────────────────────────
 
 const HomePage = lazy(() => import('@/pages/HomePage'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
+const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
 
 // Phase 2 — Content
 const ActivitiesPage = lazy(() => import('@/pages/activities/ActivitiesPage'))
@@ -30,17 +32,6 @@ const RecommendationsPage = lazy(() => import('@/pages/recommendations/Recommend
 const UsersPage = lazy(() => import('@/pages/users/UsersPage'))
 const UserFormPage = lazy(() => import('@/pages/users/UserFormPage'))
 
-// Future-phase stubs
-function ComingSoon({ label }: { label: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
-      <p className="text-label-sm uppercase tracking-widest text-on-surface-variant">À venir</p>
-      <h1 className="text-headline-sm font-extrabold text-on-surface">{label}</h1>
-      <p className="text-body-sm text-on-surface-variant">Cette section sera disponible dans une phase ultérieure.</p>
-    </div>
-  )
-}
-
 function P({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
 }
@@ -52,8 +43,8 @@ export default function App() {
     <BrowserRouter>
       <Toaster richColors position="top-right" />
       <Routes>
-        <Route path="/login" element={<ComingSoon label="Connexion" />} />
-        <Route element={<AppLayout />}>
+        <Route path="/login" element={<P><LoginPage /></P>} />
+        <Route element={<AuthGuard><AppLayout /></AuthGuard>}>
           {/* Home */}
           <Route index element={<P><HomePage /></P>} />
 
