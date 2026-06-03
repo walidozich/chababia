@@ -19,6 +19,7 @@ import { STALE } from '@/lib/staleTimes'
 
 // Recharts and all chart rendering is deferred in a separate chunk
 const HomeCharts = lazy(() => import('./HomeCharts'))
+const EstablishmentsMap = lazy(() => import('@/components/shared/EstablishmentsMap'))
 
 // ─── KPI card ─────────────────────────────────────────────────────────────────
 
@@ -85,7 +86,8 @@ export default function HomePage() {
   const establishmentsQuery = useQuery({
     queryKey: qk.list(COLLECTIONS.establishments, 'home'),
     queryFn: () => getFullList<Establishment>(COLLECTIONS.establishments, {
-      fields: 'id,status',
+      filter: 'status = "published"',
+      sort: 'name',
     }),
     staleTime: STALE.establishments,
   })
@@ -197,6 +199,30 @@ export default function HomePage() {
             </div>
           </>
         )}
+      </div>
+
+      {/* ── Carte territoriale ── */}
+      <div className="bento-card space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-label-lg font-bold text-on-surface">Couverture territoriale</h2>
+            <p className="text-body-sm text-on-surface-variant">
+              {activeEstablishments} établissements · {
+                new Set(establishments.map((e) => e.commune).filter(Boolean)).size
+              } communes
+            </p>
+          </div>
+        </div>
+        <Suspense fallback={
+          <div
+            className="flex animate-pulse items-center justify-center rounded-xl bg-surface"
+            style={{ height: 400 }}
+          >
+            <p className="text-body-sm text-on-surface-variant">Chargement de la carte...</p>
+          </div>
+        }>
+          <EstablishmentsMap establishments={establishments} height={400} />
+        </Suspense>
       </div>
 
       {/* ── Charts — lazy chunk, deferred until after KPIs ── */}

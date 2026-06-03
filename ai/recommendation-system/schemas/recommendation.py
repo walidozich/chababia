@@ -16,7 +16,8 @@ class ActivityCard(BaseModel):
     """
     id:            str
     title:         str
-    category:      Optional[str] = None   # category id — app resolves to display name
+    category:      Optional[str] = None   # category id
+    category_name: Optional[str] = None   # display name
     commune:       Optional[str] = None
     wilaya:        Optional[str] = None
     activity_mode: Optional[str] = None   # physical | online | hybrid

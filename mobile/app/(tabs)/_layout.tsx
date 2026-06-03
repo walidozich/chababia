@@ -31,6 +31,7 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Opportunités', tabBarIcon: ({ color }) => <IconSymbol size={24} name="house.fill" color={color} /> }} />
+      <Tabs.Screen name="map" options={{ title: 'Carte', tabBarIcon: ({ color }) => <IconSymbol size={24} name="map.fill" color={color} /> }} />
       <Tabs.Screen name="tickets" options={{ title: 'Mes billets', tabBarIcon: ({ color }) => <IconSymbol size={24} name="ticket.fill" color={color} /> }} />
       <Tabs.Screen name="settings" options={{ title: 'Paramètres', tabBarIcon: ({ color }) => <IconSymbol size={24} name="gearshape.fill" color={color} /> }} />
     </Tabs>

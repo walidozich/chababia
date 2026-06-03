@@ -41,7 +41,21 @@ export default function RadiusScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
-        await Location.getCurrentPositionAsync({});
+        const pos = await Location.getCurrentPositionAsync({});
+        if (pos && pb.authStore.isValid) {
+          try {
+            const [geo] = await Location.reverseGeocodeAsync({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+            });
+            const commune = geo?.city ?? geo?.subregion ?? '';
+            const wilaya = geo?.region ?? '';
+            const userId = pb.authStore.model?.id;
+            if (userId && (commune || wilaya)) {
+              await pb.collection('users').update(userId, { commune, wilaya })
+            }
+          } catch {}
+        }
       }
     } catch {
       // Continue without location.

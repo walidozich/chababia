@@ -52,9 +52,17 @@ export default function AuthScreen() {
     setSubmitting(true)
 
     try {
-      await pb.collection('users').authWithPassword(email, password)
+      const authData = await pb.collection('users').authWithPassword(email, password)
       await setPref(keys.onboardingDone, true)
-      router.replace('/(tabs)')
+
+      const record = authData.record as Record<string, unknown>
+      const interests = record.interests as unknown[] | undefined
+      const commune = record.commune as string | undefined
+      if (!interests?.length || !commune) {
+        router.replace('/onboarding/interests')
+      } else {
+        router.replace('/(tabs)')
+      }
     } catch (err) {
       if (err instanceof ClientResponseError) {
         setError(err.message || labels.invalid)

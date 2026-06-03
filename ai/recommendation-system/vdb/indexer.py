@@ -4,7 +4,7 @@ from qdrant_client.models import PointStruct
 from vdb.client import get_client
 from vdb.collections import ensure_collection_exists
 from embeddings.encoder import encode_activity
-from db.queries import get_published_activities
+from db.queries import get_published_activities, get_categories
 from config import settings
 
 
@@ -23,6 +23,8 @@ def index_activities(session) -> int:
         print("[indexer] No published activities found — nothing to index.")
         return 0
 
+    categories = {c.id: c.name for c in get_categories(session)}
+
     points = []
     for act in activities:
         vector = encode_activity(
@@ -36,6 +38,7 @@ def index_activities(session) -> int:
             "id": act.id,
             "title": act.title,
             "category": act.category,
+            "category_name": categories.get(act.category, act.category),
             "activity_mode": act.activity_mode,
             "establishment_id": act.establishment,
             "is_free": act.is_free,

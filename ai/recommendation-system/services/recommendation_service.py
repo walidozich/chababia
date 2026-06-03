@@ -86,7 +86,9 @@ def get_feed(req: FeedRequest, session: Session) -> FeedResponse:
     items = [
         ActivityCard(
             id=hit["id"], title=hit["title"],
-            category=hit.get("category"), commune=hit.get("commune"),
+            category=hit.get("category"),
+            category_name=hit.get("category_name"),
+            commune=hit.get("commune"),
             wilaya=hit.get("wilaya"), activity_mode=hit.get("activity_mode"),
             is_free=hit.get("is_free"), score=hit["score"],
         )

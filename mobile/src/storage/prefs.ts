@@ -12,6 +12,7 @@ const keys = {
   onboardingDone: `${PREFIX}onboarding_done`,
   cacheOpportunities: `${PREFIX}cache_opportunities`,
   tickets: `${PREFIX}tickets`,
+  cacheGeo: `${PREFIX}cache_geo`,
 } as const;
 
 export async function getPref<T>(key: string): Promise<T | null> {

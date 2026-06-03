@@ -9,6 +9,8 @@ import { Button } from '@/src/components/Button';
 import { colors, spacing, typography } from '@/src/design-system';
 import { useLocale } from '@/src/hooks/useLocale';
 import { t } from '@/src/i18n';
+import { pb } from '@/src/api/client';
+import { setPref, keys } from '@/src/storage/prefs';
 
 type SimpleIconProps = { size?: number; color?: string; strokeWidth?: number };
 
@@ -80,7 +82,18 @@ export default function InterestsScreen() {
     });
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
+    await setPref(keys.interests, [...selected])
+
+    if (pb.authStore.isValid) {
+      try {
+        const userId = pb.authStore.model?.id
+        if (userId) {
+          await pb.collection('users').update(userId, { interests: [...selected] })
+        }
+      } catch {}
+    }
+
     router.push('/onboarding/radius');
   };
 

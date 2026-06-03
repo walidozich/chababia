@@ -16,6 +16,7 @@ import json
 from pathlib import Path
 from qdrant_client.models import PointStruct
 from db.models import Activity
+from db.queries import get_categories
 from embeddings.encoder import encode_activity
 from vdb.client import get_client
 from vdb.collections import ensure_collection_exists
@@ -42,7 +43,7 @@ def _save_state(state: dict) -> None:
 # Core
 # ---------------------------------------------------------------------------
 
-def _build_point(act: Activity) -> PointStruct:
+def _build_point(act: Activity, categories: dict[str, str]) -> PointStruct:
     vector = encode_activity(
         title=act.title or "",
         description=act.short_description or "",
@@ -53,6 +54,7 @@ def _build_point(act: Activity) -> PointStruct:
         "id":            act.id,
         "title":         act.title,
         "category":      act.category,
+        "category_name": categories.get(act.category or "", act.category or ""),
         "commune":       act.commune,
         "wilaya":        act.wilaya,
         "activity_mode": act.activity_mode,
@@ -88,6 +90,8 @@ def incremental_index(session) -> int:
         .all()
     )
 
+    categories = {c.id: c.name for c in get_categories(session)}
+
     # Find new or updated
     to_index = [a for a in activities if state.get(a.id) != a.updated]
 
@@ -108,7 +112,7 @@ def incremental_index(session) -> int:
         _save_state(state)
         return 0
 
-    points = [_build_point(a) for a in to_index]
+    points = [_build_point(a, categories) for a in to_index]
     _upsert(points)
 
     for a in to_index:
@@ -143,7 +147,8 @@ def full_index(session) -> int:
         return 0
 
     print(f"[index] Full re-index: encoding {len(activities)} activities...")
-    points = [_build_point(a) for a in activities]
+    categories = {c.id: c.name for c in get_categories(session)}
+    points = [_build_point(a, categories) for a in activities]
     _upsert(points)
 
     _save_state({a.id: a.updated for a in activities})
