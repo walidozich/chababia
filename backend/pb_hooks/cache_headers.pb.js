@@ -9,11 +9,11 @@
 // they invalidate the cache for every data change.
 //
 // Cache durations per spec §13.3:
-//   categories / *_translations / documents → 7 days
-//   establishments / *_translations         → 24 hours
-//   activities                              → 30 min
-//   announcements / newsletters             → 10 min
-//   talent_showcase                         → 1 hour
+//   categories / category_translations / documents → 7 days
+//   establishments / establishment_translations    → 24 hours
+//   activities / activity_translations             → 30 min  (aligned so translations invalidate with parent)
+//   announcements / newsletters                    → 10 min
+//   talent_showcase                                → 1 hour
 
 routerUse((e) => {
     const path = (e.request && e.request.url && e.request.url.path) ? e.request.url.path : "";
@@ -31,10 +31,10 @@ routerUse((e) => {
         collectionName === "documents") {
         maxAge = 604800;
     } else if (collectionName === "establishments" ||
-               collectionName === "activity_translations" ||
                collectionName === "establishment_translations") {
         maxAge = 86400;
-    } else if (collectionName === "activities") {
+    } else if (collectionName === "activities" ||
+               collectionName === "activity_translations") {
         maxAge = 1800;
     } else if (collectionName === "announcements" ||
                collectionName === "newsletters") {

@@ -17,6 +17,10 @@
 
 migrate((app) => {
 
+    // Guard: only seed on explicit opt-in so test accounts never land in production.
+    // Set SEED_TEST_USERS=true in the environment before running migrations in dev.
+    if ($os.getenv("SEED_TEST_USERS") !== "true") return;
+
     const users = app.findCollectionByNameOrId("users");
 
     const testUsers = [

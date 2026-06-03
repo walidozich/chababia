@@ -77,16 +77,30 @@ routerAdd("POST", "/api/admin/event-recommendations", (e) => {
 
     // ── 4. Rate limit ─────────────────────────────────────────────────────────
     // Max 10 total requests per admin (no per-row timestamps in PocketBase 0.39
-    // base collections, so lifetime count is used instead of per-hour window)
-    const totalRequests = $app.countRecords(
-        "recommendation_requests",
-        $dbx.hashExp({ admin_user: adminId })
-    );
-    if (totalRequests >= 10) {
-        return e.json(429, {
-            code:    429,
-            message: "Rate limit reached (10 requests per account). Contact a superuser to reset.",
-        });
+    // base collections, so lifetime count is used instead of per-hour window).
+    //
+    // Superusers: admin_user relation is null for superuser requests (they live in
+    // _superusers, not users), so per-user counting doesn't work. Instead apply a
+    // global cap on all records to prevent runaway API consumption.
+    if (isSuperuser) {
+        const globalTotal = $app.countRecords("recommendation_requests");
+        if (globalTotal >= 100) {
+            return e.json(429, {
+                code:    429,
+                message: "Global rate limit reached (100 total requests). Contact a superuser to reset.",
+            });
+        }
+    } else {
+        const totalRequests = $app.countRecords(
+            "recommendation_requests",
+            $dbx.hashExp({ admin_user: adminId })
+        );
+        if (totalRequests >= 10) {
+            return e.json(429, {
+                code:    429,
+                message: "Rate limit reached (10 requests per account). Contact a superuser to reset.",
+            });
+        }
     }
 
     // ── 5. API key check ──────────────────────────────────────────────────────
