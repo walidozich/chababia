@@ -21,6 +21,11 @@ const NewslettersPage = lazy(() => import('@/pages/newsletters/NewslettersPage')
 const NewsletterFormPage = lazy(() => import('@/pages/newsletters/NewsletterFormPage'))
 const DocumentsPage = lazy(() => import('@/pages/documents/DocumentsPage'))
 const DocumentFormPage = lazy(() => import('@/pages/documents/DocumentFormPage'))
+const RegistrationsPage = lazy(() => import('@/pages/registrations/RegistrationsPage'))
+const ProjectsPage = lazy(() => import('@/pages/projects/ProjectsPage'))
+const ProjectDetailPage = lazy(() => import('@/pages/projects/ProjectDetailPage'))
+const TalentPage = lazy(() => import('@/pages/talent/TalentPage'))
+const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage'))
 
 // Phase 3–4 stubs
 function ComingSoon({ label }: { label: string }) {
@@ -77,13 +82,14 @@ export default function App() {
           <Route path="documents/new" element={<P><DocumentFormPage /></P>} />
           <Route path="documents/:id" element={<P><DocumentFormPage /></P>} />
 
-          {/* Phase 3 stubs */}
-          <Route path="registrations" element={<ComingSoon label="Inscriptions" />} />
-          <Route path="projects" element={<ComingSoon label="Projets jeunes" />} />
-          <Route path="talent" element={<ComingSoon label="Vitrine talents" />} />
+          {/* Phase 3 */}
+          <Route path="registrations" element={<P><RegistrationsPage /></P>} />
+          <Route path="projects" element={<P><ProjectsPage /></P>} />
+          <Route path="projects/:id" element={<P><ProjectDetailPage /></P>} />
+          <Route path="talent" element={<P><TalentPage /></P>} />
+          <Route path="reports" element={<P><ReportsPage /></P>} />
 
           {/* Phase 4 stubs */}
-          <Route path="reports" element={<ComingSoon label="Signalements" />} />
           <Route path="users" element={<ComingSoon label="Utilisateurs" />} />
           <Route path="recommendations" element={<ComingSoon label="IA Recommandations" />} />
 
