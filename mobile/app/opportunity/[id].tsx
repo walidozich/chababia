@@ -1,37 +1,20 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Linking, Platform } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Notifications from 'expo-notifications';
-import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
-import { ArrowRight, Clock3, MapPin } from 'lucide-react-native';
-import { Button } from '@/src/components/Button';
-import { QrCode } from '@/src/components/QrCode';
-import { Badge } from '@/src/components/Badge';
-import { typography, spacing, colors } from '@/src/design-system';
-import { api } from '@/src/api/client';
-import { getUserToken } from '@/src/api/identity';
-import { useLocale } from '@/src/hooks/useLocale';
-import { useRSVP, type StoredTicket } from '@/src/hooks/useRSVP';
-import detailFixture from '@/src/api/__fixtures__/opportunity-detail.json';
-import opportunitiesFixture from '@/src/api/__fixtures__/opportunities.json';
+import { useEffect, useState } from 'react'
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Linking, Platform } from 'react-native'
+import { router, useLocalSearchParams } from 'expo-router'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import Svg, { Path, Circle, Line } from 'react-native-svg'
+import { ArrowRight, Clock3, MapPin } from 'lucide-react-native'
+import { Button } from '@/src/components/Button'
+import { QrCode } from '@/src/components/QrCode'
+import { Badge } from '@/src/components/Badge'
+import { typography, spacing, colors } from '@/src/design-system'
+import { pb } from '@/src/api/client'
+import { useLocale } from '@/src/hooks/useLocale'
+import { useRSVP, type StoredTicket } from '@/src/hooks/useRSVP'
+import type { Activity } from '@/src/api/types'
 
-interface OpportunityDetail {
-  id: string;
-  title: string;
-  category: string;
-  description: string;
-  date_ts: number;
-  end_ts: number;
-  address: string;
-  slots_total: number;
-  slots_left: number;
-  contact: string;
-  establishment_id: string;
-}
-
-function formatFullDate(ts: number, locale: string): string {
-  const date = new Date(ts * 1000);
+function formatFullDate(iso: string, locale: string): string {
+  const date = new Date(iso)
   return date.toLocaleDateString(locale === 'ar' ? 'ar-DZ' : 'fr-DZ', {
     weekday: 'long',
     day: 'numeric',
@@ -39,104 +22,93 @@ function formatFullDate(ts: number, locale: string): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  });
+  })
 }
 
 export default function OpportunityDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { locale } = useLocale();
-  const { rsvp, submitting } = useRSVP();
-  const [detail, setDetail] = useState<OpportunityDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [confirmedTicket, setConfirmedTicket] = useState<StoredTicket | null>(null);
+  const { id } = useLocalSearchParams<{ id: string }>()
+  const { locale } = useLocale()
+  const { rsvp, submitting } = useRSVP()
+  const [activity, setActivity] = useState<Activity | null>(null)
+  const [registrationCount, setRegistrationCount] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [confirmedTicket, setConfirmedTicket] = useState<StoredTicket | null>(null)
 
   useEffect(() => {
     const loadDetail = async () => {
-      setLoading(true);
-      const token = await getUserToken();
+      if (!id) return
+      setLoading(true)
 
-      const { data, error } = await api.get<OpportunityDetail>(`/opportunities/${id}`, {
-        Authorization: `Bearer ${token}`,
-      });
+      try {
+        const a = await pb.collection('activities').getOne<Activity>(id, {
+          expand: 'category,establishment',
+        })
+        setActivity(a)
 
-      if (error || !data) {
-        const fixture = detailFixture as OpportunityDetail;
-        const list = opportunitiesFixture.data.find((o) => o.id === id);
-        setDetail({
-          ...fixture,
-          id: id ?? fixture.id,
-          title: list?.title ?? fixture.title,
-          category: list?.category ?? fixture.category,
-          slots_left: list?.slots_left ?? fixture.slots_left,
-        });
-        setLoading(false);
-        return;
+        try {
+          const regs = await pb.collection('registrations').getList(1, 1, {
+            filter: pb.filter('activity = {:a} && status = {:s}', { a: id, s: 'registered' }),
+          })
+          setRegistrationCount(regs.totalItems)
+        } catch {
+          setRegistrationCount(0)
+        }
+      } catch {
+        setActivity(null)
       }
 
-      setDetail(data);
-      setLoading(false);
-    };
+      setLoading(false)
+    }
 
-    if (id) loadDetail();
-  }, [id]);
+    loadDetail()
+  }, [id])
 
   const handleRSVP = async () => {
-    if (!detail) return;
-    const token = await getUserToken();
-    const ticket = await rsvp(detail.id, detail.title, token);
-    if (ticket) {
-      setConfirmedTicket(ticket);
+    if (!activity) return
+    const ticket = await rsvp(activity.id, activity.title)
+    if (!ticket) return
 
-      const notifyTime = detail.date_ts - 3600;
-      const now = Math.floor(Date.now() / 1000);
-
-      if (notifyTime > now) {
-        try {
-          const { status } = await Notifications.requestPermissionsAsync();
-          if (status === 'granted') {
-            await Notifications.scheduleNotificationAsync({
-              content: {
-                title: locale === 'fr' ? 'Rappel événement' : locale === 'ar' ? 'تذكير بالفعالية' : 'ⴰⵙⵎⴻⴽⵜⵉ ⵏ ⵓⵖⴻⵍⵍⵓⵢ',
-                body: `${detail.title} ${locale === 'fr' ? 'dans 1 heure' : locale === 'ar' ? 'بعد ساعة' : 'ⴳ ⵢⵉⵡⴻⵏ ⵏ ⵓⵙⵔⴰⴳ'}`,
-                data: { rsvpId: ticket.rsvpId },
-              },
-              trigger: {
-                type: Notifications.SchedulableTriggerInputTypes.DATE,
-                date: notifyTime,
-              },
-            });
-          }
-        } catch {
-          // silently ignore
-        }
-      }
-    }
-  };
+    setConfirmedTicket(ticket)
+  }
 
   const handleViewTicket = () => {
-    if (!confirmedTicket) return;
-    router.push(`/ticket/${confirmedTicket.rsvpId}` as never);
-  };
+    if (!confirmedTicket) return
+    router.push(`/ticket/${confirmedTicket.rsvpId}` as never)
+  }
 
   const handleOpenMaps = () => {
-    if (!detail) return;
-    const encodedAddress = encodeURIComponent(detail.address);
+    if (!activity) return
+    const address = activity.expand?.establishment?.address ?? activity.commune
+    const encoded = encodeURIComponent(address)
     const url = Platform.select({
-      ios: `maps:?q=${encodedAddress}`,
-      android: `geo:0,0?q=${encodedAddress}`,
-      default: `https://maps.google.com/?q=${encodedAddress}`,
-    });
-    if (url) Linking.openURL(url);
-  };
+      ios: `maps:?q=${encoded}`,
+      android: `geo:0,0?q=${encoded}`,
+      default: `https://maps.google.com/?q=${encoded}`,
+    })
+    if (url) Linking.openURL(url)
+  }
 
-  if (loading || !detail) {
+  if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
-    );
+    )
+  }
+
+  if (!activity) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={[styles.loadingContainer, { gap: spacing.md }]}>
+          <Text style={{ color: colors.ink }} maxFontSizeMultiplier={1.3}>
+            {locale === 'fr' ? 'Activité introuvable' : locale === 'ar' ? 'النشاط غير موجود' : 'ⵓⵍⴰⵛ ⴰⵖⴻⵍⵍⵓⵢ'}
+          </Text>
+          <Button title={locale === 'fr' ? 'Retour' : locale === 'ar' ? 'رجوع' : 'ⵖⴻⵔ ⴷⴻⴼⴼⵉⵔ'} variant="secondary" accessibilityLabel="Retour" onPress={() => router.back()} />
+        </View>
+      </SafeAreaView>
+    )
   }
 
   const texts = {
@@ -148,10 +120,15 @@ export default function OpportunityDetailScreen() {
     rsvp: locale === 'fr' ? 'Je participe' : locale === 'ar' ? 'سأشارك' : 'ⴰⴷ ⵜⴻⴽⴽⵉⵖ',
     view_ticket: locale === 'fr' ? 'Voir mon billet' : locale === 'ar' ? 'عرض التذكرة' : 'ⵣⴻⵕ ⵜⵉⵇⵕⵉⵟ',
     back: locale === 'fr' ? 'Retour' : locale === 'ar' ? 'رجوع' : 'ⵖⴻⵔ ⴷⴻⴼⴼⵉⵔ',
-  };
+  }
 
-  const confirmed = confirmedTicket !== null;
-  const canRSVP = detail.slots_left > 0 && !confirmed;
+  const categoryName = activity.expand?.category?.name ?? activity.category
+  const establishmentName = activity.expand?.establishment?.name ?? ''
+  const establishmentAddress = activity.expand?.establishment?.address ?? activity.commune
+  const slotsLeft = activity.capacity > 0 ? activity.capacity - registrationCount : 0
+
+  const confirmed = confirmedTicket !== null
+  const canRSVP = slotsLeft > 0 && !confirmed
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -160,7 +137,7 @@ export default function OpportunityDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-      <View style={styles.topBar}>
+        <View style={styles.topBar}>
           <View style={styles.backButton}>
             <Button
               title=""
@@ -174,30 +151,24 @@ export default function OpportunityDetailScreen() {
 
         <View style={styles.heroCard}>
           <View style={styles.categoryBadge}>
-            <Badge
-              label={detail.category}
-              variant="positive"
-              accessibilityLabel={`Catégorie : ${detail.category}`}
-            />
+            <Badge label={categoryName} variant="positive" accessibilityLabel={`Catégorie : ${categoryName}`} />
           </View>
           <Text style={styles.heroTitle} maxFontSizeMultiplier={1.2} numberOfLines={4}>
-            {detail.title}
+            {activity.title}
           </Text>
           <View style={styles.slotsRow}>
             <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={colors.primary} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-                <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <Circle cx={9} cy={7} r={4} />
-                <Path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <Path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </Svg>
+              <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <Circle cx={9} cy={7} r={4} />
+              <Path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <Path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </Svg>
             <Text style={styles.slotsText} maxFontSizeMultiplier={1.3}>
-              {detail.slots_left > 0
-                ? `${detail.slots_left} ${locale === 'fr' ? 'places restantes' : locale === 'ar' ? 'أماكن متبقية' : 'ⵉⴷⵉⴳⴻⵏ ⵢⴻⴳⴳⴰⵎⴻⵏ'}`
-                : locale === 'fr'
-                  ? 'Complet'
-                  : locale === 'ar'
-                    ? 'مكتمل'
-                    : 'ⵢⴻⵛⵄⴰ'}
+              {activity.capacity > 0
+                ? slotsLeft > 0
+                  ? `${slotsLeft} ${locale === 'fr' ? 'places restantes' : locale === 'ar' ? 'أماكن متبقية' : 'ⵉⴷⵉⴳⴻⵏ ⵢⴻⴳⴳⴰⵎⴻⵏ'}`
+                  : locale === 'fr' ? 'Complet' : locale === 'ar' ? 'مكتمل' : 'ⵢⴻⵛⵄⴰ'
+                : locale === 'fr' ? 'Places illimitées' : locale === 'ar' ? 'أماكن غير محدودة' : 'ⵉⴷⵉⴳⴻⵏ ⵓⵔ ⵙⵡⴰⵜⵜⴰⵏ'}
             </Text>
           </View>
         </View>
@@ -208,36 +179,32 @@ export default function OpportunityDetailScreen() {
               <Clock3 size={18} color={colors.inkDeep} strokeWidth={2} />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel} maxFontSizeMultiplier={1.3}>
-                {texts.date}
-              </Text>
+              <Text style={styles.infoLabel} maxFontSizeMultiplier={1.3}>{texts.date}</Text>
               <Text style={styles.infoValue} maxFontSizeMultiplier={1.3}>
-                {formatFullDate(detail.date_ts, locale)}
+                {formatFullDate(activity.start_datetime, locale)}
               </Text>
             </View>
           </View>
         </View>
 
-        <View style={styles.infoSection}>
-          <View style={styles.infoCard}>
-            <View style={styles.infoIconShell}>
-              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.inkDeep} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <Path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <Path d="M14 2v6h6" />
-                <Line x1={16} y1={13} x2={8} y2={13} />
-                <Line x1={16} y1={17} x2={8} y2={17} />
-              </Svg>
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel} maxFontSizeMultiplier={1.3}>
-                {texts.description}
-              </Text>
-              <Text style={styles.infoValue} maxFontSizeMultiplier={1.3}>
-                {detail.description}
-              </Text>
+        {activity.full_description ? (
+          <View style={styles.infoSection}>
+            <View style={styles.infoCard}>
+              <View style={styles.infoIconShell}>
+                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.inkDeep} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <Path d="M14 2v6h6" />
+                  <Line x1={16} y1={13} x2={8} y2={13} />
+                  <Line x1={16} y1={17} x2={8} y2={17} />
+                </Svg>
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel} maxFontSizeMultiplier={1.3}>{texts.description}</Text>
+                <Text style={styles.infoValue} maxFontSizeMultiplier={1.3}>{activity.full_description}</Text>
+              </View>
             </View>
           </View>
-        </View>
+        ) : null}
 
         <View style={styles.infoSection}>
           <View style={styles.infoCard}>
@@ -245,25 +212,20 @@ export default function OpportunityDetailScreen() {
               <MapPin size={18} color={colors.inkDeep} strokeWidth={2} />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel} maxFontSizeMultiplier={1.3}>
-                {texts.address}
-              </Text>
+              <Text style={styles.infoLabel} maxFontSizeMultiplier={1.3}>{texts.address}</Text>
               <Text style={styles.infoValue} maxFontSizeMultiplier={1.3} numberOfLines={3}>
-                {detail.address}
+                {establishmentAddress || (locale === 'fr' ? 'Non spécifié' : locale === 'ar' ? 'غير محدد' : 'ⵓⵔ ⵢⴻⵜⵜⵡⴰⵎⴰⵍ')}
               </Text>
-              <View style={styles.mapButton}>
-                <Button
-                  title={texts.open_maps}
-                  variant="tertiary"
-                  accessibilityLabel={texts.open_maps}
-                  onPress={handleOpenMaps}
-                />
-              </View>
+              {establishmentAddress ? (
+                <View style={styles.mapButton}>
+                  <Button title={texts.open_maps} variant="tertiary" accessibilityLabel={texts.open_maps} onPress={handleOpenMaps} />
+                </View>
+              ) : null}
             </View>
           </View>
         </View>
 
-        {detail.contact ? (
+        {activity.contact_phone ? (
           <View style={styles.infoSection}>
             <View style={styles.infoCard}>
               <View style={styles.infoIconShell}>
@@ -272,12 +234,8 @@ export default function OpportunityDetailScreen() {
                 </Svg>
               </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel} maxFontSizeMultiplier={1.3}>
-                  {texts.contact}
-                </Text>
-                <Text style={styles.infoValue} maxFontSizeMultiplier={1.3}>
-                  {detail.contact}
-                </Text>
+                <Text style={styles.infoLabel} maxFontSizeMultiplier={1.3}>{texts.contact}</Text>
+                <Text style={styles.infoValue} maxFontSizeMultiplier={1.3}>{activity.contact_phone}</Text>
               </View>
             </View>
           </View>
@@ -288,9 +246,11 @@ export default function OpportunityDetailScreen() {
         {confirmed && confirmedTicket ? (
           <View style={styles.confirmedSection}>
             <View style={styles.miniQrRow}>
-              <View style={styles.miniQrCard}>
-                <QrCode value={confirmedTicket.qrPayload} size={80} />
-              </View>
+              {confirmedTicket.qrPayload ? (
+                <View style={styles.miniQrCard}>
+                  <QrCode value={confirmedTicket.qrPayload} size={80} />
+                </View>
+              ) : null}
               <View style={styles.confirmedInfo}>
                 <Text style={styles.confirmedLabel} maxFontSizeMultiplier={1.3}>
                   {locale === 'fr' ? 'Inscription confirmée' : locale === 'ar' ? 'تم تأكيد التسجيل' : 'ⵢⴻⵜⵜⵡⴰⵙⴻⵏⵜⴻⵎ ⵓⵙⴻⵇⴻⵔ'}
@@ -318,7 +278,7 @@ export default function OpportunityDetailScreen() {
         )}
       </View>
     </SafeAreaView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -465,4 +425,4 @@ const styles = StyleSheet.create({
     ...typography['body-sm'],
     color: colors.body,
   },
-});
+})

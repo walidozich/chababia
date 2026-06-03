@@ -1,117 +1,98 @@
-import { useState, useCallback } from 'react';
-import { api } from '../api/client';
-import { getPref, setPref, keys } from '../storage/prefs';
-import type { getUserToken } from '../api/identity';
-import rsvpFixture from '../api/__fixtures__/rsvp.json';
-
-interface RsvpResponse {
-  rsvp_id: string;
-  event_code: string;
-  confirmation_ts: number;
-  qr_payload: string;
-}
+import { useState, useCallback } from 'react'
+import { pb } from '../api/client'
+import { getPref, setPref, keys } from '../storage/prefs'
+import type { Registration } from '../api/types'
 
 export interface StoredTicket {
-  rsvpId: string;
-  eventId: string;
-  eventTitle: string;
-  eventCode: string;
-  date: string;
-  qrPayload: string;
-  confirmationTs: number;
-  cancelled: boolean;
+  rsvpId: string
+  eventId: string
+  eventTitle: string
+  eventCode: string
+  date: string
+  qrPayload: string
+  confirmationTs: number
+  cancelled: boolean
 }
 
 export function useRSVP() {
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [tickets, setTickets] = useState<StoredTicket[]>([]);
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [tickets, setTickets] = useState<StoredTicket[]>([])
 
   const loadTickets = useCallback(async (): Promise<StoredTicket[]> => {
-    const stored = await getPref<StoredTicket[]>(keys.tickets);
-    const result = stored ?? [];
-    setTickets(result);
-    return result;
-  }, []);
+    const stored = await getPref<StoredTicket[]>(keys.tickets)
+    return stored ?? []
+  }, [])
+
+  const loadRegistrations = useCallback(async () => {
+    try {
+      return await pb.collection('registrations').getFullList<Registration>({
+        sort: '-created',
+        expand: 'activity',
+      })
+    } catch {
+      return []
+    }
+  }, [])
 
   const rsvp = useCallback(
-    async (
-      eventId: string,
-      eventTitle: string,
-      token: Awaited<ReturnType<typeof getUserToken>>,
-    ): Promise<StoredTicket | null> => {
-      setSubmitting(true);
-      setError(null);
+    async (activityId: string, eventTitle: string): Promise<StoredTicket | null> => {
+      setSubmitting(true)
+      setError(null)
 
-      const { data, error: apiError } = await api.post<RsvpResponse>('/rsvp', {
-        event_id: eventId,
-        user_token: token,
-      });
+      try {
+        const reg = await pb.collection('registrations').create<Registration>({
+          activity: activityId,
+          full_name: pb.authStore.record?.full_name ?? '',
+          phone: pb.authStore.record?.phone ?? '',
+        })
 
-      if (apiError || !data) {
-        const fallback = rsvpFixture as RsvpResponse;
         const ticket: StoredTicket = {
-          rsvpId: `rsvp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-          eventId,
+          rsvpId: reg.id,
+          eventId: activityId,
           eventTitle,
-          eventCode: `${fallback.event_code}-${Date.now().toString(36)}`,
-          date: new Date().toISOString(),
-          qrPayload: `${fallback.qr_payload}-${eventId}`,
-          confirmationTs: fallback.confirmation_ts,
+          eventCode: reg.qr_code.slice(0, 8),
+          date: reg.created,
+          qrPayload: reg.qr_code,
+          confirmationTs: Math.floor(Date.now() / 1000),
           cancelled: false,
-        };
-        const updated = [...tickets, ticket];
-        setTickets(updated);
-        await setPref(keys.tickets, updated);
-        setSubmitting(false);
-        return ticket;
-      }
+        }
 
-      const ticket: StoredTicket = {
-        rsvpId: data.rsvp_id,
-        eventId,
-        eventTitle,
-        eventCode: data.event_code,
-        date: new Date().toISOString(),
-        qrPayload: data.qr_payload,
-        confirmationTs: data.confirmation_ts,
-        cancelled: false,
-      };
-      const updated = [...tickets, ticket];
-      setTickets(updated);
-      await setPref(keys.tickets, updated);
-      setSubmitting(false);
-      return ticket;
+        const updated = [...tickets, ticket]
+        setTickets(updated)
+        await setPref(keys.tickets, updated)
+        setSubmitting(false)
+        return ticket
+      } catch (err) {
+        setSubmitting(false)
+        const message = err instanceof Error ? err.message : 'Unknown error'
+        setError(message)
+        return null
+      }
     },
     [tickets],
-  );
+  )
 
   const cancelRsvp = useCallback(
-    async (
-      rsvpId: string,
-      token: Awaited<ReturnType<typeof getUserToken>>,
-    ) => {
-      setSubmitting(true);
-      setError(null);
+    async (registrationId: string) => {
+      setSubmitting(true)
+      setError(null)
 
-      const { error: apiError } = await api.delete(`/rsvp/${rsvpId}`, {
-        Authorization: `Bearer ${token}`,
-      });
-
-      // always mark as cancelled locally regardless of API result
-      const updated = tickets.map((t) =>
-        t.rsvpId === rsvpId ? { ...t, cancelled: true } : t,
-      );
-      setTickets(updated);
-      await setPref(keys.tickets, updated);
-      setSubmitting(false);
-
-      if (apiError) {
-        setError(apiError);
+      try {
+        await pb.collection('registrations').update(registrationId, { status: 'cancelled' })
+      } catch {
+        // proceed with local cancellation regardless
       }
+
+      const updated = tickets.map((t) =>
+        t.rsvpId === registrationId ? { ...t, cancelled: true } : t,
+      )
+      setTickets(updated)
+      await setPref(keys.tickets, updated)
+      setSubmitting(false)
     },
     [tickets],
-  );
+  )
 
-  return { rsvp, cancelRsvp, tickets, submitting, error, loadTickets };
+  return { rsvp, cancelRsvp, loadRegistrations, tickets, submitting, error, loadTickets }
 }

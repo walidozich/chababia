@@ -9,6 +9,7 @@ import { colors, spacing, typography } from '@/src/design-system';
 import { useLocale } from '@/src/hooks/useLocale';
 import { setPref, keys } from '@/src/storage/prefs';
 import { t } from '@/src/i18n';
+import { pb } from '@/src/api/client';
 
 const RADIUS_OPTIONS = [
   { value: 1000, fr: '1 km', ar: '1 كم', tzm: '1 ⴽⵎ' },
@@ -49,7 +50,12 @@ export default function RadiusScreen() {
     await setPref(keys.radius, radius);
     await setPref(keys.onboardingDone, true);
     setLoading(false);
-    router.replace('/(tabs)');
+
+    if (pb.authStore.isValid) {
+      router.replace('/(tabs)');
+    } else {
+      router.replace('/onboarding/auth' as never);
+    }
   };
 
   return (

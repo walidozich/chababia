@@ -1,55 +1,63 @@
-import { Pressable, View, Text, StyleSheet } from 'react-native';
-import { Clock3, Heart, MapPin, X } from 'lucide-react-native';
-import { Svg, Path } from 'react-native-svg';
-import { typography, spacing } from '../design-system';
-import { useTheme } from '../theme/ThemeContext';
-import { Tag } from './Tag';
-import { t, type Locale } from '../i18n';
-import type { FormattedOpportunity } from '../hooks/useOpportunities';
+import { Pressable, View, Text, StyleSheet } from 'react-native'
+import { Clock3, Heart, MapPin, X } from 'lucide-react-native'
+import { Svg, Path } from 'react-native-svg'
+import { typography, spacing } from '../design-system'
+import { useTheme } from '../theme/ThemeContext'
+import { Tag } from './Tag'
+import { t, type Locale } from '../i18n'
+import type { FormattedOpportunity } from '../hooks/useOpportunities'
 
 interface OpportunityCardProps {
-  opportunity: FormattedOpportunity;
-  locale: Locale;
-  onLike: () => void;
-  onDislike: () => void;
-  onSeeMore: () => void;
+  opportunity: FormattedOpportunity
+  locale: Locale
+  onLike: () => void
+  onDislike: () => void
+  onSeeMore: () => void
 }
 
-const CATEGORY_LABELS: Record<string, Record<Locale, string>> = {
-  sport: { fr: 'Sport', ar: 'رياضة', tzm: 'ⵙⴱⵓⵕⵜ' },
-  culture: { fr: 'Culture', ar: 'ثقافة', tzm: 'ⵉⴷⵍⴻⵙ' },
-  formation: { fr: 'Formation', ar: 'تكوين', tzm: 'ⴰⵙⴻⵍⵎⴻⴷ' },
-  musique: { fr: 'Musique', ar: 'موسيقى', tzm: 'ⴰⵥⴰⵡⴰⵏ' },
-  ecologie: { fr: 'Écologie', ar: 'بيئة', tzm: 'ⵜⴰⵡⵏⵏⴰⴹⵜ' },
-  benevolat: { fr: 'Bénévolat', ar: 'تطوع', tzm: 'ⴰⵙⴻⵡⵡⴰⵚ' },
-};
+const THEME_PALETTE = [
+  { gradientA: '#e8f5e0', gradientB: '#f4f8f1', accent: '#4d7f16' },
+  { gradientA: '#fdf6e0', gradientB: '#f8f6f0', accent: '#c2860e' },
+  { gradientA: '#e0f0f5', gradientB: '#f0f4f6', accent: '#1a6070' },
+  { gradientA: '#fde8ed', gradientB: '#f8f4f5', accent: '#b83a5c' },
+  { gradientA: '#e0f5e8', gradientB: '#f1f6f2', accent: '#2c7a4a' },
+  { gradientA: '#ede0f5', gradientB: '#f5f1f8', accent: '#6a3d99' },
+  { gradientA: '#f5e8e0', gradientB: '#f8f4f1', accent: '#a0522d' },
+]
 
-const CARD_THEMES: Record<string, { gradientA: string; gradientB: string; accent: string }> = {
-  sport: { gradientA: '#e8f5e0', gradientB: '#f4f8f1', accent: '#4d7f16' },
-  culture: { gradientA: '#fdf6e0', gradientB: '#f8f6f0', accent: '#c2860e' },
-  formation: { gradientA: '#e0f0f5', gradientB: '#f0f4f6', accent: '#1a6070' },
-  musique: { gradientA: '#fde8ed', gradientB: '#f8f4f5', accent: '#b83a5c' },
-  ecologie: { gradientA: '#e0f5e8', gradientB: '#f1f6f2', accent: '#2c7a4a' },
-  benevolat: { gradientA: '#e8f5ec', gradientB: '#f2f6f3', accent: '#2c7a4a' },
-};
-
-function getCategoryLabel(category: string, locale: Locale): string {
-  return CATEGORY_LABELS[category]?.[locale] ?? category;
+function hashStr(s: string): number {
+  let h = 0
+  for (let i = 0; i < s.length; i++) {
+    h = (Math.imul(31, h) + s.charCodeAt(i)) | 0
+  }
+  return Math.abs(h)
 }
 
 function getTheme(category: string) {
-  return CARD_THEMES[category] ?? CARD_THEMES.formation;
+  const idx = hashStr(category) % THEME_PALETTE.length
+  return THEME_PALETTE[idx] ?? THEME_PALETTE[0]!
 }
 
 function formatPlaces(slotsLeft: number, locale: Locale): string {
   if (slotsLeft <= 0) {
-    if (locale === 'ar') return 'مكتمل';
-    if (locale === 'tzm') return 'ⵢⴻⵛⵄⴰ';
-    return 'Complet';
+    if (locale === 'ar') return 'مكتمل'
+    if (locale === 'tzm') return 'ⵢⴻⵛⵄⴰ'
+    return 'Complet'
   }
-  if (locale === 'ar') return `${slotsLeft} أماكن`;
-  if (locale === 'tzm') return `${slotsLeft} ⵉⴷⵉⴳⴻⵏ`;
-  return `${slotsLeft} places`;
+  if (locale === 'ar') return `${slotsLeft} أماكن`
+  if (locale === 'tzm') return `${slotsLeft} ⵉⴷⵉⴳⴻⵏ`
+  return `${slotsLeft} places`
+}
+
+function formatCardDate(iso: string, locale: string): string {
+  const date = new Date(iso)
+  return date.toLocaleDateString(locale === 'ar' ? 'ar-DZ' : 'fr-DZ', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function IconButton({
@@ -58,13 +66,13 @@ function IconButton({
   accessibilityLabel,
   variant,
 }: {
-  icon: typeof Heart;
-  onPress: () => void;
-  accessibilityLabel: string;
-  variant: 'like' | 'dislike';
+  icon: typeof Heart
+  onPress: () => void
+  accessibilityLabel: string
+  variant: 'like' | 'dislike'
 }) {
-  const { colors } = useTheme();
-  const isLike = variant === 'like';
+  const { colors } = useTheme()
+  const isLike = variant === 'like'
   return (
     <Pressable
       accessibilityRole="button"
@@ -78,7 +86,7 @@ function IconButton({
     >
       <Icon size={32} color={isLike ? '#3f6a13' : colors.ink} strokeWidth={2.4} />
     </Pressable>
-  );
+  )
 }
 
 export function OpportunityCard({
@@ -88,13 +96,14 @@ export function OpportunityCard({
   onDislike,
   onSeeMore,
 }: OpportunityCardProps) {
-  const theme = getTheme(opportunity.category);
-  const { colors } = useTheme();
-  const categoryLabel = getCategoryLabel(opportunity.category, locale);
-  const placesLabel = formatPlaces(opportunity.slotsLeft, locale);
-  const likeLabel = t(locale, 'discovery.like');
-  const dislikeLabel = t(locale, 'discovery.dislike');
-  const seeMoreLabel = locale === 'fr' ? 'Voir plus' : locale === 'ar' ? 'المزيد' : 'ⵥⵕ ⵓⴳⴰⵔ';
+  const theme = getTheme(opportunity.category)
+  const { colors } = useTheme()
+  const categoryLabel = opportunity.category
+  const placesLabel = formatPlaces(opportunity.slotsLeft, locale)
+  const likeLabel = t(locale, 'discovery.like')
+  const dislikeLabel = t(locale, 'discovery.dislike')
+  const seeMoreLabel = locale === 'fr' ? 'Voir plus' : locale === 'ar' ? 'المزيد' : 'ⵥⵕ ⵓⴳⴰⵔ'
+  const dateLabel = formatCardDate(opportunity.date, locale)
 
   return (
     <View style={[styles.card, { backgroundColor: colors.canvas, borderColor: colors.cardBorder, shadowColor: colors.cardShadow }]}>
@@ -123,13 +132,7 @@ export function OpportunityCard({
         <View style={styles.metaRow}>
           <Clock3 size={15} color={colors.mute} strokeWidth={2} />
           <Text style={[styles.metaText, { color: colors.body }]} maxFontSizeMultiplier={1.2} numberOfLines={1}>
-            {opportunity.date}
-          </Text>
-          <Text style={[styles.metaDot, { color: colors.mute }]} maxFontSizeMultiplier={1.2}>
-            {'  \u2022  '}
-          </Text>
-          <Text style={[styles.metaText, { color: colors.body }]} maxFontSizeMultiplier={1.2} numberOfLines={1}>
-            {opportunity.distance}
+            {dateLabel}
           </Text>
         </View>
 
@@ -149,7 +152,6 @@ export function OpportunityCard({
 
         <View style={styles.tagsRow}>
           <Tag label={categoryLabel} variant="solid" accessibilityLabel={`Catégorie : ${categoryLabel}`} />
-          <Tag label={opportunity.distance} variant="soft" accessibilityLabel={`Distance : ${opportunity.distance}`} />
           <Tag label={placesLabel} variant={opportunity.slotsLeft > 0 ? 'outline' : 'soft'} accessibilityLabel={`Places : ${placesLabel}`} />
         </View>
       </View>
@@ -162,7 +164,7 @@ export function OpportunityCard({
         <IconButton icon={Heart} onPress={onLike} variant="like" accessibilityLabel={likeLabel} />
       </View>
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -220,9 +222,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   metaText: {
-    ...typography['body-md'],
-  },
-  metaDot: {
     ...typography['body-md'],
   },
   seeMore: {
@@ -286,4 +285,4 @@ const styles = StyleSheet.create({
   actionDivider: {
     ...typography['body-sm'],
   },
-});
+})

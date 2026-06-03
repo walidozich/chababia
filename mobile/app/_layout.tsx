@@ -1,12 +1,22 @@
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import * as Font from 'expo-font';
-import { StyleSheet } from 'react-native';
-import { fontAssets, colors } from '@/src/design-system';
-import { ThemeProvider } from '@/src/theme/ThemeContext';
-import { LocaleProvider } from '@/src/theme/LocaleContext';
-import 'react-native-reanimated';
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { Stack } from 'expo-router'
+import { StatusBar } from 'expo-status-bar'
+import * as Font from 'expo-font'
+import { StyleSheet } from 'react-native'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fontAssets, colors } from '@/src/design-system'
+import { ThemeProvider } from '@/src/theme/ThemeContext'
+import { LocaleProvider } from '@/src/theme/LocaleContext'
+import 'react-native-reanimated'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 60 * 1000,
+      retry: 1,
+    },
+  },
+})
 
 export default function RootLayout() {
   const [fontsLoaded] = Font.useFonts(fontAssets);
@@ -16,8 +26,9 @@ export default function RootLayout() {
   }
 
   return (
-    <LocaleProvider>
-      <ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <LocaleProvider>
+        <ThemeProvider>
         <GestureHandlerRootView style={styles.root}>
           <Stack
             screenOptions={{
@@ -43,6 +54,7 @@ export default function RootLayout() {
         </GestureHandlerRootView>
       </ThemeProvider>
     </LocaleProvider>
+  </QueryClientProvider>
   );
 }
 

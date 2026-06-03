@@ -1,78 +1,95 @@
-import { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable } from 'react-native';
-import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Heart } from 'lucide-react-native';
-import { Svg, Path, Rect } from 'react-native-svg';
-import { TicketCard } from '@/src/components/TicketCard';
-import { SectionHeader } from '@/src/components/SectionHeader';
-import { Button } from '@/src/components/Button';
-import { typography, spacing } from '@/src/design-system';
-import { useRSVP, type StoredTicket } from '@/src/hooks/useRSVP';
-import { useLocale } from '@/src/hooks/useLocale';
-import { useTheme } from '@/src/theme/ThemeContext';
-import { getPref, setPref, keys } from '@/src/storage/prefs';
+import { useEffect, useState, useCallback } from 'react'
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable } from 'react-native'
+import { router } from 'expo-router'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { Heart } from 'lucide-react-native'
+import { Svg, Path } from 'react-native-svg'
+import { TicketCard } from '@/src/components/TicketCard'
+import { SectionHeader } from '@/src/components/SectionHeader'
+import { typography, spacing } from '@/src/design-system'
+import { pb } from '@/src/api/client'
+import { useLocale } from '@/src/hooks/useLocale'
+import { useTheme } from '@/src/theme/ThemeContext'
+import { getPref, setPref, keys } from '@/src/storage/prefs'
+import type { Registration } from '@/src/api/types'
 
 interface LikedItem {
-  id: string;
-  title: string;
-  category: string;
-  date: string;
-  savedAt: number;
+  id: string
+  title: string
+  category: string
+  date: string
+  savedAt: number
+}
+
+function formatDate(iso: string, locale: string): string {
+  const date = new Date(iso)
+  return date.toLocaleDateString(locale === 'ar' ? 'ar-DZ' : 'fr-DZ', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
 export default function TicketsScreen() {
-  const { locale } = useLocale();
-  const { colors } = useTheme();
-  const { loadTickets } = useRSVP();
-  const [tickets, setTickets] = useState<StoredTicket[]>([]);
-  const [likes, setLikes] = useState<LikedItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'tickets' | 'likes'>('tickets');
+  const { locale } = useLocale()
+  const { colors } = useTheme()
+  const [registrations, setRegistrations] = useState<Registration[]>([])
+  const [likes, setLikes] = useState<LikedItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState<'tickets' | 'likes'>('tickets')
 
   const loadAll = useCallback(async () => {
-    const [loadedTickets, loadedLikes] = await Promise.all([
-      loadTickets(),
+    const [regs, loadedLikes] = await Promise.all([
+      pb.authStore.isValid
+        ? pb.collection('registrations').getFullList<Registration>({
+            sort: '-created',
+            expand: 'activity',
+          }).catch(() => [] as Registration[])
+        : Promise.resolve([] as Registration[]),
       getPref<LikedItem[]>(keys.likes),
-    ]);
-    setTickets(loadedTickets ?? []);
-    setLikes(loadedLikes ?? []);
-    setLoading(false);
-  }, [loadTickets]);
+    ])
+    setRegistrations(regs)
+    setLikes(loadedLikes ?? [])
+    setLoading(false)
+  }, [])
 
-  useEffect(() => { loadAll(); }, [loadAll]);
+  useEffect(() => { loadAll() }, [loadAll])
 
-  const upcoming = tickets.filter((t) => !t.cancelled);
+  const allTickets = registrations.map((reg) => ({
+    id: reg.id,
+    title: reg.expand?.activity?.title ?? reg.activity,
+    date: reg.created,
+    status: reg.status,
+    code: reg.qr_code?.slice(0, 8) ?? '',
+  }))
 
-  const handleTicketPress = useCallback((rsvpId: string) => {
-    router.push(`/ticket/${rsvpId}` as never);
-  }, []);
+  const upcoming = allTickets.filter((t) => t.status !== 'cancelled')
+
+  const handleTicketPress = useCallback((id: string) => {
+    router.push(`/ticket/${id}` as never)
+  }, [])
 
   const handleLikePress = useCallback((id: string) => {
-    router.push(`/opportunity/${id}` as never);
-  }, []);
+    router.push(`/opportunity/${id}` as never)
+  }, [])
 
   const removeLike = useCallback(async (id: string) => {
-    const next = likes.filter((l) => l.id !== id);
-    setLikes(next);
-    await setPref(keys.likes, next);
-  }, [likes]);
+    const next = likes.filter((l) => l.id !== id)
+    setLikes(next)
+    await setPref(keys.likes, next)
+  }, [likes])
 
   if (loading) return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.appBg }]}>
       <View style={styles.loadingContainer}><ActivityIndicator size="large" color={colors.primary} /></View>
     </SafeAreaView>
-  );
+  )
 
-  const tabLabel = locale === 'fr' ? 'Mes billets' : locale === 'ar' ? 'تذاكري' : 'ⵜⵉⵇⵕⵉⵟⴰⵜ ⵉⵡ';
-  const likesLabel = locale === 'fr' ? 'Favoris' : locale === 'ar' ? 'المفضلة' : 'ⵉⵙⵎⵏⵉⴹⴻⵏ';
-  const emptyTickets = locale === 'fr' ? 'Aucun billet pour le moment' : locale === 'ar' ? 'لا توجد تذاكر حالياً' : 'ⵓⵍⴰⵛ ⵜⵉⵇⵕⵉⵟⴰⵜ ⵖⵉⵍⴰ';
-  const emptyLikes = locale === 'fr' ? 'Aucun favori pour le moment' : locale === 'ar' ? 'لا توجد مفضلات حالياً' : 'ⵓⵍⴰⵛ ⵉⵙⵎⵏⵉⴹⴻⵏ ⵖⵉⵍⴰ';
-  const emptyLikesSub = locale === 'fr' ? 'Like une opportunité pour la retrouver ici' : locale === 'ar' ? 'أعجب بفرصة لتجدها هنا' : 'ⵙⵎⵏⵉⴹ ⵢⵉⵡⴻⵏ ⵏ ⵓⵖⴻⵍⵍⵓⵢ ⴰⴽⴻⵏ ⴰⴷ ⵜⴰⴼⴻⴷ ⵜⴰⵎⴰ';
+  const tabLabel = locale === 'fr' ? 'Mes billets' : locale === 'ar' ? 'تذاكري' : 'ⵜⵉⵇⵕⵉⵟⴰⵜ ⵉⵡ'
+  const likesLabel = locale === 'fr' ? 'Favoris' : locale === 'ar' ? 'المفضلة' : 'ⵉⵙⵎⵏⵉⴹⴻⵏ'
+  const emptyTickets = locale === 'fr' ? 'Aucun billet pour le moment' : locale === 'ar' ? 'لا توجد تذاكر حالياً' : 'ⵓⵍⴰⵛ ⵜⵉⵇⵕⵉⵟⴰⵜ ⵖⵉⵍⴰ'
+  const emptyLikes = locale === 'fr' ? 'Aucun favori pour le moment' : locale === 'ar' ? 'لا توجد مفضلات حالياً' : 'ⵓⵍⴰⵛ ⵉⵙⵎⵏⵉⴹⴻⵏ ⵖⵉⵍⴰ'
+  const emptyLikesSub = locale === 'fr' ? 'Like une opportunité pour la retrouver ici' : locale === 'ar' ? 'أعجب بفرصة لتجدها هنا' : 'ⵙⵎⵏⵉⴹ ⵢⵉⵡⴻⵏ ⵏ ⵓⵖⴻⵍⵍⵓⵢ ⴰⴽⴻⵏ ⴰⴷ ⵜⴰⴼⴻⴷ ⵜⴰⵎⴰ'
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.appBg }]} edges={['top']}>
-      <SectionHeader title={locale === 'fr' ? 'Mes billets' : locale === 'ar' ? 'تذاكري' : 'ⵜⵉⵇⵕⵉⵟⴰⵜ ⵉⵡ'} accessibilityLabel="Mes billets" />
+      <SectionHeader title={tabLabel} accessibilityLabel="Mes billets" />
 
       <View style={styles.tabRow}>
         <Pressable onPress={() => setTab('tickets')} style={[styles.tab, tab === 'tickets' && { borderBottomWidth: 2, borderBottomColor: colors.brandGreen }]}>
@@ -92,17 +109,25 @@ export default function TicketsScreen() {
 
       {tab === 'tickets' ? (
         <FlatList
-          data={[...upcoming, ...tickets.filter((t) => t.cancelled)]}
-          keyExtractor={(item) => item.rsvpId}
+          data={allTickets}
+          keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <TicketCard rsvpId={item.rsvpId} eventTitle={item.eventTitle} eventCode={item.eventCode} date={new Date(item.confirmationTs * 1000).toLocaleDateString(locale === 'ar' ? 'ar-DZ' : 'fr-DZ')} address="" onPress={handleTicketPress} accessibilityLabel={`${item.eventTitle}`} />
+            <TicketCard
+              rsvpId={item.id}
+              eventTitle={item.title}
+              eventCode={item.code}
+              date={formatDate(item.date, locale)}
+              address={item.status}
+              onPress={handleTicketPress}
+              accessibilityLabel={item.title}
+            />
           )}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={[styles.emptyTitle, { color: colors.ink }]} maxFontSizeMultiplier={1.3}>{emptyTickets}</Text>
             </View>
           }
-          contentContainerStyle={tickets.length === 0 ? styles.emptyList : styles.list}
+          contentContainerStyle={allTickets.length === 0 ? styles.emptyList : styles.list}
         />
       ) : (
         <FlatList
@@ -136,7 +161,7 @@ export default function TicketsScreen() {
         />
       )}
     </SafeAreaView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -158,4 +183,4 @@ const styles = StyleSheet.create({
   likeTitle: { ...typography['body-md-strong'], marginBottom: spacing.xxs },
   likeMeta: { ...typography['body-sm'] },
   likeActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-});
+})

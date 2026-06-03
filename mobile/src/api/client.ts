@@ -1,52 +1,13 @@
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://api.chababia.dz/v1';
+import PocketBase, { AsyncAuthStore } from 'pocketbase'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
-interface RequestOptions {
-  method?: 'GET' | 'POST' | 'DELETE';
-  body?: unknown;
-  headers?: Record<string, string>;
-}
+const PB_URL = process.env.EXPO_PUBLIC_PB_URL ?? 'http://localhost:8090'
 
-interface ApiResponse<T> {
-  data: T | null;
-  error: string | null;
-  status: number;
-}
+const store = new AsyncAuthStore({
+  save: async (serialized) => AsyncStorage.setItem('pb_auth', serialized),
+  initial: AsyncStorage.getItem('pb_auth'),
+  clear: async () => AsyncStorage.removeItem('pb_auth'),
+})
 
-async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
-  const { method = 'GET', body, headers = {} } = options;
-
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...headers,
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-
-    const status = response.status;
-
-    if (!response.ok) {
-      return { data: null, error: `HTTP ${status}`, status };
-    }
-
-    const data = (await response.json()) as T;
-    return { data, error: null, status };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return { data: null, error: message, status: 0 };
-  }
-}
-
-export const api = {
-  get<T>(endpoint: string, headers?: Record<string, string>) {
-    return request<T>(endpoint, { method: 'GET', headers });
-  },
-  post<T>(endpoint: string, body: unknown, headers?: Record<string, string>) {
-    return request<T>(endpoint, { method: 'POST', body, headers });
-  },
-  delete<T>(endpoint: string, headers?: Record<string, string>) {
-    return request<T>(endpoint, { method: 'DELETE', headers });
-  },
-};
+export const pb = new PocketBase(PB_URL, store)
+pb.autoCancellation(false)

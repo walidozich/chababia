@@ -21,4 +21,6 @@ declare module 'lucide-react-native' {
   export const X: FunctionComponent<LucideProps>;
   export const MapPin: FunctionComponent<LucideProps>;
   export const Clock3: FunctionComponent<LucideProps>;
+  export const Info: FunctionComponent<LucideProps>;
+  export const Check: FunctionComponent<LucideProps>;
 }

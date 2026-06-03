@@ -1,19 +1,20 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
-import { ArrowRight, MapPin, Clock3 } from 'lucide-react-native';
-import { Button } from '@/src/components/Button';
-import { QrCode } from '@/src/components/QrCode';
-import { Badge } from '@/src/components/Badge';
-import { typography, spacing, colors } from '@/src/design-system';
-import { useRSVP, type StoredTicket } from '@/src/hooks/useRSVP';
-import { getUserToken } from '@/src/api/identity';
-import { useLocale } from '@/src/hooks/useLocale';
+import { useEffect, useState } from 'react'
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native'
+import { router, useLocalSearchParams } from 'expo-router'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import Svg, { Path } from 'react-native-svg'
+import { ArrowRight, Clock3 } from 'lucide-react-native'
+import { Button } from '@/src/components/Button'
+import { QrCode } from '@/src/components/QrCode'
+import { Badge } from '@/src/components/Badge'
+import { typography, spacing, colors } from '@/src/design-system'
+import { pb } from '@/src/api/client'
+import { useRSVP } from '@/src/hooks/useRSVP'
+import { useLocale } from '@/src/hooks/useLocale'
+import type { Registration } from '@/src/api/types'
 
-function formatTicketDate(ts: number, locale: string): string {
-  const date = new Date(ts * 1000);
+function formatTicketDate(iso: string, locale: string): string {
+  const date = new Date(iso)
   return date.toLocaleDateString(locale === 'ar' ? 'ar-DZ' : 'fr-DZ', {
     weekday: 'long',
     day: 'numeric',
@@ -21,33 +22,38 @@ function formatTicketDate(ts: number, locale: string): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  });
+  })
 }
 
 export default function TicketDetailScreen() {
-  const { rsvpId } = useLocalSearchParams<{ rsvpId: string }>();
-  const { locale } = useLocale();
-  const { cancelRsvp, loadTickets, submitting } = useRSVP();
-  const [ticket, setTicket] = useState<StoredTicket | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { rsvpId } = useLocalSearchParams<{ rsvpId: string }>()
+  const { locale } = useLocale()
+  const { cancelRsvp, submitting } = useRSVP()
+  const [registration, setRegistration] = useState<Registration | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const findTicket = async () => {
-      const tickets = await loadTickets();
-      const found = tickets.find((t) => t.rsvpId === rsvpId) ?? null;
-      setTicket(found);
-      setLoading(false);
-    };
+    const fetchReg = async () => {
+      if (!rsvpId) return
+      try {
+        const reg = await pb.collection('registrations').getOne<Registration>(rsvpId, {
+          expand: 'activity',
+        })
+        setRegistration(reg)
+      } catch {
+        setRegistration(null)
+      }
+      setLoading(false)
+    }
 
-    if (rsvpId) findTicket();
-  }, [rsvpId, loadTickets]);
+    fetchReg()
+  }, [rsvpId])
 
   const handleCancel = async () => {
-    if (!ticket) return;
-    const token = await getUserToken();
-    await cancelRsvp(ticket.rsvpId, token);
-    setTicket((t) => (t ? { ...t, cancelled: true } : t));
-  };
+    if (!registration) return
+    await cancelRsvp(registration.id)
+    setRegistration((prev) => (prev ? { ...prev, status: 'cancelled' } : prev))
+  }
 
   if (loading) {
     return (
@@ -56,10 +62,10 @@ export default function TicketDetailScreen() {
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
-    );
+    )
   }
 
-  if (!ticket) {
+  if (!registration) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.emptyContainer}>
@@ -68,7 +74,7 @@ export default function TicketDetailScreen() {
           </Text>
         </View>
       </SafeAreaView>
-    );
+    )
   }
 
   const texts = {
@@ -77,11 +83,19 @@ export default function TicketDetailScreen() {
     back: locale === 'fr' ? 'Retour' : locale === 'ar' ? 'رجوع' : 'ⵖⴻⵔ ⴷⴻⴼⴼⵉⵔ',
     ticket: locale === 'fr' ? 'Billet' : locale === 'ar' ? 'تذكرة' : 'ⵜⵉⵇⵕⵉⵟ',
     date: locale === 'fr' ? 'Date' : locale === 'ar' ? 'التاريخ' : 'ⴰⵣⴻⵎⵣ',
-    info: locale === 'fr' ? 'Informations' : locale === 'ar' ? 'معلومات' : 'ⵉⵏⵖⵎⵉⵙⴻⵏ',
-  };
+  }
+  const statusLabel = ((): string => {
+    const s = registration.status
+    if (s === 'registered') return locale === 'fr' ? 'Inscrit' : locale === 'ar' ? 'مسجل' : 'ⵢⴻⵜⵜⵡⴰⵙⴻⵇⴷⴻⴷ'
+    if (s === 'waiting_list') return locale === 'fr' ? 'Liste d\'attente' : locale === 'ar' ? 'قائمة الانتظار' : 'ⵜⴰⴱⴷⴷⴰⵔⵜ ⵏ ⵓⵕⵊⵓ'
+    if (s === 'attended') return locale === 'fr' ? 'Présent' : locale === 'ar' ? 'حضر' : 'ⵢⴻⴷⵡⴰ'
+    return texts.cancelled
+  })()
 
-  const qrSize = 180;
-  const hasQr = !!ticket.qrPayload;
+  const eventTitle = registration.expand?.activity?.title ?? registration.activity
+  const eventDate = registration.expand?.activity?.start_datetime ?? registration.created
+  const hasQr = !!registration.qr_code
+  const qrSize = 180
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -105,7 +119,7 @@ export default function TicketDetailScreen() {
           <View style={styles.sharePlaceholder} />
         </View>
 
-        {ticket.cancelled ? (
+        {registration.status === 'cancelled' ? (
           <View style={styles.cancelledBanner}>
             <Text style={styles.cancelledBannerText} maxFontSizeMultiplier={1.3}>
               {texts.cancelled}
@@ -126,10 +140,10 @@ export default function TicketDetailScreen() {
               </View>
               <View style={styles.cardHeaderTexts}>
                 <Text style={styles.cardEventTitle} maxFontSizeMultiplier={1.2} numberOfLines={2}>
-                  {ticket.eventTitle}
+                  {eventTitle}
                 </Text>
                 <Text style={styles.cardEventCode} maxFontSizeMultiplier={1.3}>
-                  {ticket.eventCode}
+                  {registration.qr_code ? registration.qr_code.slice(0, 8) : registration.id.slice(0, 8)}
                 </Text>
               </View>
             </View>
@@ -137,7 +151,7 @@ export default function TicketDetailScreen() {
             <View style={styles.cardDividerRow}>
               <View style={styles.cardDivider} />
               <Text style={styles.cardDividerLabel} maxFontSizeMultiplier={1.2}>
-                {texts.date}
+                {statusLabel}
               </Text>
               <View style={styles.cardDivider} />
             </View>
@@ -146,27 +160,27 @@ export default function TicketDetailScreen() {
               <View style={styles.cardMetaRow}>
                 <Clock3 size={14} color={colors.primary} strokeWidth={2} />
                 <Text style={styles.cardMetaText} maxFontSizeMultiplier={1.3}>
-                  {formatTicketDate(ticket.confirmationTs, locale)}
+                  {eventDate ? formatTicketDate(eventDate, locale) : '—'}
                 </Text>
               </View>
             </View>
           </View>
 
-          {hasQr ? (
+          {hasQr && registration.status !== 'cancelled' ? (
             <View style={styles.qrSection}>
               <View style={styles.qrBackground}>
                 <View style={styles.qrFrame}>
-                  <QrCode value={ticket.qrPayload} size={qrSize} />
+                  <QrCode value={registration.qr_code} size={qrSize} />
                 </View>
               </View>
               <Text style={styles.qrCodeText} maxFontSizeMultiplier={1.3} numberOfLines={1}>
-                {ticket.qrPayload.slice(0, 12)}...
+                {registration.qr_code.slice(0, 12)}...
               </Text>
             </View>
           ) : null}
         </View>
 
-        {!ticket.cancelled ? (
+        {registration.status !== 'cancelled' ? (
           <View style={styles.actionsSection}>
             <Button
               title={texts.cancel}
@@ -181,7 +195,7 @@ export default function TicketDetailScreen() {
         <View style={styles.footerSpacer} />
       </ScrollView>
     </SafeAreaView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -347,4 +361,4 @@ const styles = StyleSheet.create({
   footerSpacer: {
     height: spacing['2xl'],
   },
-});
+})

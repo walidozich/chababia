@@ -1,25 +1,31 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react'
 import {
   View, Text, StyleSheet, KeyboardAvoidingView, Platform,
   ScrollView, Pressable, TextInput as RNTextInput, useWindowDimensions,
-} from 'react-native';
-import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Mail, Eye, EyeOff } from 'lucide-react-native';
-import { spacing, typography } from '@/src/design-system';
-import { Logo } from '@/src/components/Logo';
-import { useLocale } from '@/src/hooks/useLocale';
-import { useTheme } from '@/src/theme/ThemeContext';
-import { t } from '@/src/i18n';
+  ActivityIndicator,
+} from 'react-native'
+import { router } from 'expo-router'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { Mail, Eye, EyeOff } from 'lucide-react-native'
+import { ClientResponseError } from 'pocketbase'
+import { spacing, typography } from '@/src/design-system'
+import { Logo } from '@/src/components/Logo'
+import { useLocale } from '@/src/hooks/useLocale'
+import { useTheme } from '@/src/theme/ThemeContext'
+import { t } from '@/src/i18n'
+import { pb } from '@/src/api/client'
+import { setPref, keys } from '@/src/storage/prefs'
 
 export default function AuthScreen() {
-  const { width } = useWindowDimensions();
-  const { locale } = useLocale();
-  const { colors } = useTheme();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [secureEntry, setSecureEntry] = useState(true);
-  const isCompact = width < 420;
+  const { width } = useWindowDimensions()
+  const { locale } = useLocale()
+  const { colors } = useTheme()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [secureEntry, setSecureEntry] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const isCompact = width < 420
 
   const labels = useMemo(
     () => ({
@@ -36,9 +42,31 @@ export default function AuthScreen() {
       createAccount: t(locale, 'onboarding.auth.login.create_account'),
       showPassword: locale === 'fr' ? 'Afficher le mot de passe' : locale === 'ar' ? 'إظهار كلمة المرور' : 'ⵎⴰⵍ ⵜⴰⴳⵓⵔⴰⵢⵜ',
       hidePassword: locale === 'fr' ? 'Masquer le mot de passe' : locale === 'ar' ? 'إخفاء كلمة المرور' : 'ⵖⴼⵓ ⵜⴰⴳⵓⵔⴰⵢⵜ',
+      invalid: locale === 'fr' ? 'Email ou mot de passe incorrect' : locale === 'ar' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة' : 'ⵢⵉⵖⴻⵔⴷⴰ ⵉⵎⴰⵢⵍ ⵏⴻⵖ ⵜⴰⴳⵓⵔⴰⵢⵜ',
     }),
-    [locale]
-  );
+    [locale],
+  )
+
+  const handleLogin = async () => {
+    setError(null)
+    setSubmitting(true)
+
+    try {
+      await pb.collection('users').authWithPassword(email, password)
+      await setPref(keys.onboardingDone, true)
+      router.replace('/(tabs)')
+    } catch (err) {
+      if (err instanceof ClientResponseError) {
+        setError(err.message || labels.invalid)
+      } else {
+        setError(err instanceof Error ? err.message : labels.invalid)
+      }
+    }
+
+    setSubmitting(false)
+  }
+
+  const canSubmit = email.length > 0 && password.length > 0 && !submitting
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.appBg }]}>
@@ -57,6 +85,12 @@ export default function AuthScreen() {
             <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder, shadowColor: colors.cardShadow }]}>
               <Text style={[styles.title, { color: colors.textTitle }]} maxFontSizeMultiplier={1.2}>{labels.title}</Text>
               <Text style={[styles.subtitle, { color: colors.textSubtitle }]} maxFontSizeMultiplier={1.2}>{labels.subtitle}</Text>
+
+              {error ? (
+                  <View style={[styles.errorBanner, { backgroundColor: '#fde8e8', borderColor: colors.negative }]}>
+                  <Text style={[styles.errorText, { color: colors.negative }]} maxFontSizeMultiplier={1.3}>{error}</Text>
+                </View>
+              ) : null}
 
               <View style={styles.fieldGroup}>
                 <Text style={[styles.label, { color: colors.textLabel }]} maxFontSizeMultiplier={1.2}>{labels.emailLabel}</Text>
@@ -106,10 +140,15 @@ export default function AuthScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={labels.cta}
-                onPress={() => router.push('/onboarding/profile')}
-                style={({ pressed }) => [styles.loginButton, { backgroundColor: colors.btnPrimaryBg, shadowColor: colors.btnPrimaryShadow }, pressed && styles.loginButtonPressed]}
+                onPress={handleLogin}
+                disabled={!canSubmit}
+                style={({ pressed }) => [styles.loginButton, { backgroundColor: canSubmit ? colors.btnPrimaryBg : colors.mute, shadowColor: colors.btnPrimaryShadow }, pressed && styles.loginButtonPressed]}
               >
-                <Text style={[styles.loginButtonText, { color: colors.btnPrimaryText }]} maxFontSizeMultiplier={1.2}>{labels.cta}</Text>
+                {submitting ? (
+                  <ActivityIndicator size="small" color={colors.btnPrimaryText} />
+                ) : (
+                  <Text style={[styles.loginButtonText, { color: colors.btnPrimaryText }]} maxFontSizeMultiplier={1.2}>{labels.cta}</Text>
+                )}
               </Pressable>
 
               <View style={styles.dividerRow}>
@@ -129,7 +168,7 @@ export default function AuthScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -146,6 +185,8 @@ const styles = StyleSheet.create({
   card: { width: '100%', borderRadius: 14, paddingHorizontal: 20, paddingVertical: 22, borderWidth: 1, shadowOpacity: 0.28, shadowRadius: 22, shadowOffset: { width: 0, height: 10 }, elevation: 2 },
   title: { ...typography['display-sm'], marginBottom: 6, fontSize: 28, lineHeight: 32 },
   subtitle: { ...typography['body-md'], marginBottom: 18 },
+  errorBanner: { borderRadius: 11, borderWidth: 1, padding: spacing.md, marginBottom: spacing.md },
+  errorText: { ...typography['body-sm'], textAlign: 'center' },
   fieldGroup: { marginBottom: 14 },
   label: { ...typography['body-sm-strong'], marginBottom: 8 },
   passwordRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -161,4 +202,4 @@ const styles = StyleSheet.create({
   footerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
   footerText: { ...typography['body-sm'] },
   footerLink: { ...typography['body-sm-strong'] },
-});
+})

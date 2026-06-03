@@ -6,11 +6,12 @@ import { Button } from '@/src/components/Button';
 import { Card } from '@/src/components/Card';
 import { Chip } from '@/src/components/Chip';
 import { SectionHeader } from '@/src/components/SectionHeader';
-import { typography, spacing, colors as dsColors } from '@/src/design-system';
+import { typography, spacing } from '@/src/design-system';
 import { availableLocales, type Locale } from '@/src/i18n';
 import { useLocale } from '@/src/hooks/useLocale';
 import { useTheme } from '@/src/theme/ThemeContext';
-import { getPref, setPref, removePref, keys } from '@/src/storage/prefs';
+import { getPref, setPref, removePref, keys } from '@/src/storage/prefs'
+import { pb } from '@/src/api/client'
 
 const RADIUS_OPTIONS = [
   { value: 1000, fr: '1 km', ar: '1 كم', tzm: '1 ⴽⵎ' },
@@ -47,6 +48,21 @@ export default function SettingsScreen() {
 
   const handleRadiusChange = useCallback(async (value: number) => { setRadius(value); await setPref(keys.radius, value); }, []);
   const handleInterestToggle = useCallback(async (key: string) => { setInterests((prev) => { const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]; setPref(keys.interests, next); return next; }); }, []);
+
+  const handleLogout = useCallback(() => {
+    Alert.alert(
+      locale === 'fr' ? 'Déconnexion' : locale === 'ar' ? 'تسجيل الخروج' : 'ⴰⵙⴻⵏⵣⴻⵔ',
+      locale === 'fr' ? 'Voulez-vous vraiment vous déconnecter ?' : locale === 'ar' ? 'هل تريد حقاً تسجيل الخروج؟' : 'ⴷⴰⵏⵙⴰ ⴰⴷ ⵜⵙⴻⵏⵣⴻⵔⴻⴷ ⵏⵉⵖ?',
+      [
+        { text: locale === 'fr' ? 'Annuler' : locale === 'ar' ? 'إلغاء' : 'ⵙⴻⴼⵙⵅ', style: 'cancel' },
+        { text: locale === 'fr' ? 'Déconnexion' : locale === 'ar' ? 'تسجيل الخروج' : 'ⴰⵙⴻⵏⵣⴻⵔ', style: 'destructive', onPress: async () => {
+          pb.authStore.clear()
+          await removePref(keys.onboardingDone)
+          router.replace('/onboarding/language' as never)
+        } },
+      ],
+    )
+  }, [locale])
 
   const handleResetOnboarding = useCallback(() => {
     Alert.alert(
@@ -114,6 +130,14 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionDesc, { color: colors.body }]} maxFontSizeMultiplier={1.3}>Chababia v1.0.0 — ODEJ YouthConnect</Text>
           <Text style={[styles.sectionDesc, { color: colors.body }]} maxFontSizeMultiplier={1.3}>{locale === 'fr' ? 'Connecte les jeunes Algériens aux opportunités ODEJ.' : locale === 'ar' ? 'يربط الشباب الجزائري بفرص ODEJ.' : 'ⵢⴻⵣⴷⴰⵢ ⵉⵍⵎⴰⵣⵢⴻⵏ ⵉⵣⴻⴷⵣⴰⵢⵔⵉⵢⴻⵏ ⵙ ⵜⵉⵖⴻⵍⵍⴰⵙⵉⵏ ⵏ ODEJ.'}</Text>
         </Card>
+
+        {pb.authStore.isValid ? (
+          <Card variant="content" style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.ink }]} maxFontSizeMultiplier={1.3}>{locale === 'fr' ? 'Compte' : locale === 'ar' ? 'الحساب' : 'ⴰⵎⵉⴹⴰⵏ'}</Text>
+            <Text style={[styles.sectionDesc, { color: colors.body }]} maxFontSizeMultiplier={1.3}>{pb.authStore.record?.email ?? ''}</Text>
+            <View style={styles.buttonRow}><Button title={locale === 'fr' ? 'Se déconnecter' : locale === 'ar' ? 'تسجيل الخروج' : 'ⴰⵙⴻⵏⵣⴻⵔ'} variant="tertiary" accessibilityLabel="Se déconnecter" onPress={handleLogout} /></View>
+          </Card>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

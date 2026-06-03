@@ -5,17 +5,23 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { MapPin } from 'lucide-react-native';
 import { Button } from '@/src/components/Button';
 import { OpportunityCard } from '@/src/components/OpportunityCard';
 import { Logo } from '@/src/components/Logo';
 import { typography, spacing } from '@/src/design-system';
 import { useOpportunities } from '@/src/hooks/useOpportunities';
-import { getUserToken } from '@/src/api/identity';
 import { useLocale } from '@/src/hooks/useLocale';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { getPref, setPref, keys } from '@/src/storage/prefs';
 import { t } from '@/src/i18n';
+
+interface LikedItem {
+  id: string
+  title: string
+  category: string
+  date: string
+  savedAt: number
+}
 
 const STACK_SIZE = 3;
 const SWIPE_DURATION = 200;
@@ -39,7 +45,7 @@ export default function OpportunitiesScreen() {
   const offscreenX = width + 160;
 
   useEffect(() => { currentOppRef.current = opportunities[activeIndex] ?? null; }, [opportunities, activeIndex]);
-  useEffect(() => { if (!loaded) return; setFetchAttempted(true); getUserToken().then((token) => { fetchOpportunities(token, locale); }); }, [loaded, locale, fetchOpportunities]);
+  useEffect(() => { if (!loaded) return; setFetchAttempted(true); fetchOpportunities({}); }, [loaded, fetchOpportunities]);
   useEffect(() => { setActiveIndex(0); translateX.value = 0; translateY.value = 0; }, [opportunities, translateX, translateY]);
 
   const visibleCards = useMemo(() => opportunities.slice(activeIndex, activeIndex + STACK_SIZE), [activeIndex, opportunities]);
@@ -47,9 +53,9 @@ export default function OpportunitiesScreen() {
   const handleAdvance = useCallback(() => {
     const opp = currentOppRef.current;
     if (opp) {
-      getPref<any[]>(keys.likes).then((existing) => {
+      getPref<LikedItem[]>(keys.likes).then((existing) => {
         const list = existing ?? [];
-        if (!list.find((l: any) => l.id === opp.id)) {
+        if (!list.find((l: LikedItem) => l.id === opp.id)) {
           list.unshift({ id: opp.id, title: opp.title, category: opp.category, date: opp.date, savedAt: Date.now() });
           setPref(keys.likes, list.slice(0, 50));
         }

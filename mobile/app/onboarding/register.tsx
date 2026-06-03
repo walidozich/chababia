@@ -1,27 +1,32 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react'
 import {
   View, Text, StyleSheet, KeyboardAvoidingView, Platform,
   ScrollView, Pressable, TextInput as RNTextInput, useWindowDimensions,
-} from 'react-native';
-import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Mail, Eye, EyeOff } from 'lucide-react-native';
-import { spacing, typography } from '@/src/design-system';
-import { Logo } from '@/src/components/Logo';
-import { useLocale } from '@/src/hooks/useLocale';
-import { useTheme } from '@/src/theme/ThemeContext';
-import { t } from '@/src/i18n';
+  ActivityIndicator,
+} from 'react-native'
+import { router } from 'expo-router'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { Mail, Eye, EyeOff } from 'lucide-react-native'
+import { ClientResponseError } from 'pocketbase'
+import { spacing, typography } from '@/src/design-system'
+import { Logo } from '@/src/components/Logo'
+import { useLocale } from '@/src/hooks/useLocale'
+import { useTheme } from '@/src/theme/ThemeContext'
+import { t } from '@/src/i18n'
+import { pb } from '@/src/api/client'
 
 export default function RegisterScreen() {
-  const { width } = useWindowDimensions();
-  const { locale } = useLocale();
-  const { colors } = useTheme();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [secureEntry, setSecureEntry] = useState(true);
-  const [secureConfirm, setSecureConfirm] = useState(true);
-  const isCompact = width < 420;
+  const { width } = useWindowDimensions()
+  const { locale } = useLocale()
+  const { colors } = useTheme()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [secureEntry, setSecureEntry] = useState(true)
+  const [secureConfirm, setSecureConfirm] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const isCompact = width < 420
 
   const labels = useMemo(
     () => ({
@@ -38,9 +43,61 @@ export default function RegisterScreen() {
       login: t(locale, 'onboarding.auth.register.login'),
       showPassword: locale === 'fr' ? 'Afficher le mot de passe' : locale === 'ar' ? 'إظهار كلمة المرور' : 'ⵎⴰⵍ ⵜⴰⴳⵓⵔⴰⵢⵜ',
       hidePassword: locale === 'fr' ? 'Masquer le mot de passe' : locale === 'ar' ? 'إخفاء كلمة المرور' : 'ⵖⴼⵓ ⵜⴰⴳⵓⵔⴰⵢⵜ',
+      passwordMismatch: locale === 'fr' ? 'Les mots de passe ne correspondent pas' : locale === 'ar' ? 'كلمات المرور غير متطابقة' : 'ⵓⵔ ⵎⵙⴰⵙⴰⵏⵜ ⵜⴰⴳⵓⵔⵉⵡⵉⵏ',
+      passwordShort: locale === 'fr' ? '8 caractères minimum' : locale === 'ar' ? '8 أحرف على الأقل' : 'ⴰⵟⵟⴰⵙ ⵏ 8 ⵉⵙⴻⴽⴽⵉⵍⴻⵏ',
     }),
-    [locale]
-  );
+    [locale],
+  )
+
+  const handleRegister = async () => {
+    setError(null)
+
+    if (password !== confirmPassword) {
+      setError(labels.passwordMismatch)
+      return
+    }
+
+    if (password.length < 8) {
+      setError(labels.passwordShort)
+      return
+    }
+
+    setSubmitting(true)
+
+    try {
+      const fullName = email.split('@')[0] ?? 'Jeune'
+
+      await pb.collection('users').create({
+        email,
+        password,
+        passwordConfirm: confirmPassword,
+        full_name: fullName,
+        role: 'youth',
+        preferred_language: locale,
+      })
+
+      await pb.collection('users').authWithPassword(email, password)
+      router.push('/onboarding/profile')
+    } catch (err) {
+      if (err instanceof ClientResponseError) {
+        const fieldErrors = err.response?.data
+        if (fieldErrors && typeof fieldErrors === 'object') {
+          const messages = Object.values(fieldErrors as Record<string, { message: string }>)
+            .map((v) => v?.message ?? '')
+            .filter(Boolean)
+          setError(messages.length > 0 ? messages.join('\n') : err.message)
+        } else {
+          setError(err.message)
+        }
+      } else {
+        setError(err instanceof Error ? err.message : String(err))
+      }
+    }
+
+    setSubmitting(false)
+  }
+
+  const canSubmit = email.length > 0 && password.length >= 8 && confirmPassword.length >= 8 && !submitting
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.appBg }]}>
@@ -55,6 +112,12 @@ export default function RegisterScreen() {
             <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder, shadowColor: colors.cardShadow }]}>
               <Text style={[styles.title, { color: colors.textTitle }]} maxFontSizeMultiplier={1.2}>{labels.title}</Text>
               <Text style={[styles.subtitle, { color: colors.textSubtitle }]} maxFontSizeMultiplier={1.2}>{labels.subtitle}</Text>
+
+              {error ? (
+                  <View style={[styles.errorBanner, { backgroundColor: '#fde8e8', borderColor: colors.negative }]}>
+                  <Text style={[styles.errorText, { color: colors.negative }]} maxFontSizeMultiplier={1.3}>{error}</Text>
+                </View>
+              ) : null}
 
               <View style={styles.fieldGroup}>
                 <Text style={[styles.label, { color: colors.textLabel }]} maxFontSizeMultiplier={1.2}>{labels.emailLabel}</Text>
@@ -86,10 +149,15 @@ export default function RegisterScreen() {
 
               <Pressable
                 accessibilityRole="button" accessibilityLabel={labels.cta}
-                onPress={() => router.push('/onboarding/profile')}
-                style={({ pressed }) => [styles.registerButton, { backgroundColor: colors.btnPrimaryBg, shadowColor: colors.btnPrimaryShadow }, pressed && styles.registerButtonPressed]}
+                onPress={handleRegister}
+                disabled={!canSubmit}
+                style={({ pressed }) => [styles.registerButton, { backgroundColor: canSubmit ? colors.btnPrimaryBg : colors.mute, shadowColor: colors.btnPrimaryShadow }, pressed && styles.registerButtonPressed]}
               >
-                <Text style={[styles.registerButtonText, { color: colors.btnPrimaryText }]} maxFontSizeMultiplier={1.2}>{labels.cta}</Text>
+                {submitting ? (
+                  <ActivityIndicator size="small" color={colors.btnPrimaryText} />
+                ) : (
+                  <Text style={[styles.registerButtonText, { color: colors.btnPrimaryText }]} maxFontSizeMultiplier={1.2}>{labels.cta}</Text>
+                )}
               </Pressable>
 
               <View style={styles.footerRow}>
@@ -103,7 +171,7 @@ export default function RegisterScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -117,6 +185,8 @@ const styles = StyleSheet.create({
   card: { width: '100%', borderRadius: 14, paddingHorizontal: 20, paddingVertical: 22, borderWidth: 1, shadowOpacity: 0.28, shadowRadius: 22, shadowOffset: { width: 0, height: 10 }, elevation: 2 },
   title: { ...typography['display-sm'], marginBottom: 6, fontSize: 28, lineHeight: 32 },
   subtitle: { ...typography['body-md'], marginBottom: 18 },
+  errorBanner: { borderRadius: 11, borderWidth: 1, padding: spacing.md, marginBottom: spacing.md },
+  errorText: { ...typography['body-sm'], textAlign: 'center' },
   fieldGroup: { marginBottom: 14 },
   label: { ...typography['body-sm-strong'], marginBottom: 8 },
   inputShell: { minHeight: 46, borderWidth: 1, borderRadius: 11, paddingLeft: 14, paddingRight: 12, flexDirection: 'row', alignItems: 'center' },
@@ -127,4 +197,4 @@ const styles = StyleSheet.create({
   footerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
   footerText: { ...typography['body-sm'] },
   footerLink: { ...typography['body-sm-strong'] },
-});
+})
