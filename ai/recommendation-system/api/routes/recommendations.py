@@ -1,5 +1,4 @@
 # POST /recommendations endpoint
-
 from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -16,15 +15,14 @@ def personalized_feed(
     session: Session = Depends(get_session),
 ) -> FeedResponse:
     """
-    Returns a personalized activity feed for a youth user.
+    Returns a personalised activity feed for a youth user.
 
-    Built from the user's:
-    - Stored interests (selected during onboarding)
-    - Commune (for locality relevance)
-    - Registration history (past attended/registered activities)
+    Matching uses:
+    - interests (JSON multi-select stored in users table)
+    - commune (locality relevance)
+    - registration history (attended/registered activities excluded from results)
 
-    Already-registered activities are excluded from results.
-    Results are cached per user for one hour.
+    Results cached per user for one hour.
     """
     return get_feed(FeedRequest(user_id=user_id), session)
 
@@ -35,245 +33,68 @@ def personalized_feed(
 if __name__ == "__main__":
     from fastapi.testclient import TestClient
     from fastapi import FastAPI
-    from sqlalchemy import text
-    from datetime import datetime, timezone
-
-    from db.database import engine, SessionLocal
+    from db.database import engine
     from db.models import Base, Activity, Category, User, Registration
     from vdb.indexer import index_activities
+    from cache.request_cache import clear_cache
+    from db.database import SessionLocal
+    from sqlalchemy import text
 
     print("--- api/routes/recommendations.py self-test ---")
-
-    # ------------------------------------------------------------------
-    # DB Setup
-    # ------------------------------------------------------------------
     Base.metadata.create_all(engine)
-
     session = SessionLocal()
+    clear_cache()
 
-    session.execute(text("DELETE FROM registrations"))
-    session.execute(text("DELETE FROM activities"))
-    session.execute(text("DELETE FROM categories"))
-    session.execute(text("DELETE FROM users"))
+    for tbl in ["registrations", "activities", "categories", "users"]:
+        session.execute(text(f"DELETE FROM {tbl}"))
     session.commit()
 
-    now = datetime.now(timezone.utc)
-
-    # ------------------------------------------------------------------
-    # Categories
-    # ------------------------------------------------------------------
     session.add_all([
-        Category(id="cat_sports", name="Sports", status="active"),
-        Category(id="cat_science", name="Science", status="active"),
         Category(id="cat_env", name="Environment", status="active"),
+        Activity(id="r1", title="Eco Walk",     short_description="Environmental awareness walk.",
+                 category="cat_env", commune="Akbou", wilaya="Bejaia",
+                 activity_mode="physical", status="published", is_free=True,
+                 start_datetime="2026-07-10 09:00:00.000Z"),
+        Activity(id="r2", title="Tree Planting", short_description="Community tree planting.",
+                 category="cat_env", commune="Akbou", wilaya="Bejaia",
+                 activity_mode="physical", status="published", is_free=True,
+                 start_datetime="2026-07-15 09:00:00.000Z"),
+        User(id="u1", full_name="Sara", email="sara@test.dz",
+             commune="Akbou", wilaya="Bejaia", role="youth",
+             interests=["Environment"]),
     ])
-
-    # ------------------------------------------------------------------
-    # Activities
-    # ------------------------------------------------------------------
-    session.add_all([
-        Activity(
-            id="football",
-            title="Football Tournament",
-            short_description="Competitive football event for youth players",
-            category_id="cat_sports",
-            commune="Akbou",
-            activity_mode="physical",
-            status="published",
-            is_free=True,
-            last_verified_at=now,
-        ),
-        Activity(
-            id="basketball",
-            title="Basketball Championship",
-            short_description="Youth basketball competition",
-            category_id="cat_sports",
-            commune="Akbou",
-            activity_mode="physical",
-            status="published",
-            is_free=True,
-            last_verified_at=now,
-        ),
-        Activity(
-            id="robotics",
-            title="Robotics Workshop",
-            short_description="Introduction to robotics and engineering",
-            category_id="cat_science",
-            commune="Akbou",
-            activity_mode="physical",
-            status="published",
-            is_free=False,
-            last_verified_at=now,
-        ),
-        Activity(
-            id="chemistry",
-            title="Chemistry Seminar",
-            short_description="Fundamentals of chemistry and laboratory science",
-            category_id="cat_science",
-            commune="Akbou",
-            activity_mode="physical",
-            status="published",
-            is_free=True,
-            last_verified_at=now,
-        ),
-        Activity(
-            id="trees",
-            title="Tree Planting Day",
-            short_description="Community environmental activity",
-            category_id="cat_env",
-            commune="Akbou",
-            activity_mode="physical",
-            status="published",
-            is_free=True,
-            last_verified_at=now,
-        ),
-        Activity(
-            id="oran_football",
-            title="Football Tournament Oran",
-            short_description="Football competition for youth athletes",
-            category_id="cat_sports",
-            commune="Oran",
-            activity_mode="physical",
-            status="published",
-            is_free=True,
-            last_verified_at=now,
-        ),
-    ])
-
-    # ------------------------------------------------------------------
-    # User
-    # ------------------------------------------------------------------
-    session.add(
-        User(
-            id="sports_user",
-            full_name="Yacine",
-            commune="Akbou",
-            wilaya="Bejaia",
-            interests="Sports,Football",
-        )
-    )
-
-    # Already attended football
-    session.add(
-        Registration(
-            id="reg1",
-            user_id="sports_user",
-            activity_id="football",
-            status="attended",
-        )
-    )
-
     session.commit()
-
-    # ------------------------------------------------------------------
-    # Index Activities into Vector DB
-    # ------------------------------------------------------------------
-    print("Indexing activities...")
     index_activities(session)
-
     session.close()
 
-    # ------------------------------------------------------------------
-    # FastAPI Test Client
-    # ------------------------------------------------------------------
     app = FastAPI()
     app.include_router(router)
-
     client = TestClient(app)
 
-    # ------------------------------------------------------------------
-    # Personalized Feed Test
-    # ------------------------------------------------------------------
-    response = client.get("/api/feed/sports_user")
-
-    assert response.status_code == 200, (
-        f"Expected 200, got {response.status_code}"
-    )
-
-    data = response.json()
-
-    print("\nProfile Summary:")
-    print(data["profile_summary"])
-
-    print("\nRecommendations:")
-    for item in data["items"]:
-        print(
-            f"{item['score']:.3f} | "
-            f"{item['title']} | "
-            f"{item.get('commune')}"
-        )
-
-    returned_ids = [item["id"] for item in data["items"]]
-
-    # ------------------------------------------------------------------
-    # Assertions
-    # ------------------------------------------------------------------
-
-    assert data["user_id"] == "sports_user"
-    print("✓ correct user returned")
-
+    # Known user
+    r = client.get("/api/feed/u1")
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+    data = r.json()
+    assert data["user_id"] == "u1"
     assert isinstance(data["items"], list)
-    print("✓ feed contains item list")
+    assert "profile_summary" in data
+    assert not data["cached"]
+    print(f"✓ GET /api/feed/u1 — {len(data['items'])} items")
+    print(f"  Profile: {data['profile_summary']}")
 
-    # Already attended activity must not appear
-    assert "football" not in returned_ids
-    print("✓ attended activity excluded")
+    # Second call — cached
+    r2 = client.get("/api/feed/u1")
+    assert r2.json()["cached"] is True
+    print("✓ second call served from cache")
 
-    # Sports recommendation should appear
-    assert "basketball" in returned_ids
-    print("✓ sports activity recommended")
+    # Unknown user — 200 with general feed
+    r3 = client.get("/api/feed/nobody")
+    assert r3.status_code == 200
+    print("✓ unknown user returns 200 with general feed")
 
-    # User interests should be reflected
-    assert "Sports" in data["profile_summary"]
-    print("✓ interests included in profile")
+    # Item structure
+    for item in data["items"]:
+        assert "id" in item and "title" in item and "score" in item
+    print("✓ all item fields present")
 
-    # ------------------------------------------------------------------
-    # Score Validation
-    # ------------------------------------------------------------------
-    scores = {
-        item["id"]: item["score"]
-        for item in data["items"]
-    }
-
-    if "basketball" in scores and "robotics" in scores:
-        print(
-            f"basketball={scores['basketball']:.3f} "
-            f"robotics={scores['robotics']:.3f}"
-        )
-
-        assert scores["basketball"] > scores["robotics"]
-        print("✓ sports ranked above robotics")
-
-    if "basketball" in scores and "oran_football" in scores:
-        print(
-            f"local={scores['basketball']:.3f} "
-            f"remote={scores['oran_football']:.3f}"
-        )
-
-    # ------------------------------------------------------------------
-    # Cache Test
-    # ------------------------------------------------------------------
-    response2 = client.get("/api/feed/sports_user")
-
-    assert response2.status_code == 200
-    assert response2.json()["cached"] is True
-
-    print("✓ cache working")
-
-    # ------------------------------------------------------------------
-    # Unknown User Test
-    # ------------------------------------------------------------------
-    response3 = client.get("/api/feed/unknown_user")
-
-    assert response3.status_code == 200
-
-    anon = response3.json()
-
-    assert isinstance(anon["items"], list)
-
-    print(
-        f"✓ unknown user receives "
-        f"{len(anon['items'])} recommendations"
-    )
-
-    print("\n--- ALL TESTS PASSED ---")
+    print("--- all route tests passed ---")

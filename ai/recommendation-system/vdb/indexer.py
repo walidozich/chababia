@@ -28,18 +28,21 @@ def index_activities(session) -> int:
         vector = encode_activity(
             title=act.title or "",
             description=act.short_description or "",
-            category=act.category_id or "",   # category name if joined, id otherwise
-            commune=getattr(act, "commune", "") or "",
+            category=act.category or "",
+            commune=act.commune or "",
         )
+
         payload = {
             "id": act.id,
             "title": act.title,
-            "category": act.category_id,
+            "category": act.category,
             "activity_mode": act.activity_mode,
-            "establishment_id": act.establishment_id,
+            "establishment_id": act.establishment,
             "is_free": act.is_free,
             "age_min": act.age_min,
             "age_max": act.age_max,
+            "commune": act.commune,
+            "wilaya": act.wilaya,
         }
         # Qdrant requires integer or UUID point IDs — we hash the string ID
         point_id = abs(hash(act.id)) % (2**63)
@@ -74,7 +77,7 @@ if __name__ == "__main__":
         id="act_idx_1",
         title="Youth Football Tournament",
         short_description="Competitive football for youth aged 15-25.",
-        category_id="cat_sports",
+        category="cat_sports",
         activity_mode="physical",
         status="published",
         last_verified_at=datetime.utcnow(),
@@ -83,7 +86,7 @@ if __name__ == "__main__":
         id="act_idx_2",
         title="Photography Workshop",
         short_description="Learn basic photography skills.",
-        category_id="cat_sports",
+        category="cat_sports",
         activity_mode="physical",
         status="published",
         last_verified_at=datetime.utcnow(),
@@ -93,7 +96,7 @@ if __name__ == "__main__":
         id="act_idx_3",
         title="Draft Event",
         short_description="This should not be indexed.",
-        category_id="cat_sports",
+        category="cat_sports",
         status="draft",
     ))
     session.commit()

@@ -73,9 +73,9 @@ if __name__ == "__main__":
     session.add(Category(id="cat_s", name="Sports", status="active"))
     session.add(Category(id="cat_a", name="Arts", status="active"))
     session.add_all([
-        Activity(id="s1", title="Football Tournament", short_description="Youth football match", category_id="cat_s", activity_mode="physical", status="published", last_verified_at=datetime.utcnow()),
-        Activity(id="s2", title="Basketball League",   short_description="Youth basketball competition", category_id="cat_s", activity_mode="physical", status="published", last_verified_at=datetime.utcnow()),
-        Activity(id="a1", title="Photography Workshop", short_description="Learn photography basics", category_id="cat_a", activity_mode="physical", status="published", last_verified_at=datetime.utcnow()),
+        Activity(id="s1", title="Football Tournament", short_description="Youth football match", category="cat_s", activity_mode="physical", status="published", last_verified_at=datetime.utcnow()),
+        Activity(id="s2", title="Basketball League",   short_description="Youth basketball competition", category="cat_s", activity_mode="physical", status="published", last_verified_at=datetime.utcnow()),
+        Activity(id="a1", title="Photography Workshop", short_description="Learn photography basics", category="cat_a", activity_mode="physical", status="published", last_verified_at=datetime.utcnow()),
     ])
     session.commit()
 
