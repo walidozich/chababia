@@ -29,7 +29,7 @@
 
 ---
 
-## Phase 1 — Foundation: app shell & shared primitives
+## Phase 1 — Foundation: app shell & shared primitives ✓ DONE
 
 > **Lib work already done in Phase 0:** `lib/pb.ts` · `lib/queryClient.ts` · `lib/staleTimes.ts` · `lib/errors.ts` · `lib/permissions.ts` · `lib/utils.ts` · `types/collections.ts` · `stores/authStore.ts` · Tailwind design tokens · globals.css
 
@@ -47,32 +47,33 @@ Component rules (reference):
 
 ### 1b · PB client / query / types / errors ✓ DONE (Phase 0)
 
-### 1c · Mock data setup
+### 1c · Mock data setup ✓ DONE
 
-- [ ] `src/mocks/` folder — one file per collection (e.g. `activities.mock.ts`, `establishments.mock.ts`, …)
-- [ ] Each mock file exports a typed array: `export const MOCK_ACTIVITIES: Activity[] = [...]` — **typed against `types/collections.ts`, never `any`**
-- [ ] `src/mocks/index.ts` — re-exports all mock arrays
-- [ ] `src/lib/devRole.ts` — `export const DEV_ROLE: Role = 'super_admin'` and `export const DEV_IS_ADMIN = true`; used by the app shell during UI-first phases; replaced by real auth in Phase 6
+- [x] `src/mocks/` — 13 files (activities, announcements, categories, content-reports, documents, establishments, newsletters, project-submissions, recommendations, registrations, talent-showcase, users, index.ts)
+- [x] Each mock file exports a strictly typed array: `MOCK_ACTIVITIES: Activity[]`, etc. — never `any`, enum values exact, relation fields are IDs
+- [x] `src/mocks/index.ts` — re-exports all mock arrays
+- [x] `src/lib/devRole.ts` — `DEV_ROLE: Role = 'super_admin'` + `DEV_IS_ADMIN = true`
 
-### 1d · App shell
+### 1d · App shell ✓ DONE
 
-- [ ] **Sidebar** (collapsible, 240px open / 64px icon-only): logo, nav links driven by `can()` with `DEV_ROLE` / `DEV_IS_ADMIN`, user mini-card at bottom
-- [ ] **Topbar**: breadcrumbs, role badge (shows current `DEV_ROLE` during dev), logout placeholder
-- [ ] **Content area**: scrollable, `max-w-7xl mx-auto px-6 py-8`
-- [ ] Mobile: sidebar collapses to drawer (hamburger in topbar)
-- [ ] Bento-grid page containers: 12-col desktop, 4-col mobile, 24px gutters
+- [x] **Sidebar** (collapsible 240px / 64px): `Sidebar.tsx` — logo, grouped nav (4 groups) driven by `can()` with `DEV_ROLE`/`DEV_IS_ADMIN`, user mini-card + role badge, scroll area, collapse toggle persisted to localStorage
+- [x] **Topbar**: `Topbar.tsx` — breadcrumbs, role badge (DEV_ROLE), user avatar dropdown (logout placeholder)
+- [x] **AppLayout**: `AppLayout.tsx` — Sidebar + Topbar + `<Outlet />`, scrollable main
+- [x] Mobile: Sheet drawer (hamburger in topbar) wraps full Sidebar
+- [x] `sidebarStore.ts` — Zustand + persist middleware
 
-### 1e · Shared primitives
+### 1e · Shared primitives ✓ DONE
 
-- [ ] `DataTable` — sort, client-side pagination over mock arrays (same props as server-side so swap is zero-diff); columns typed as `ColumnDef<T>`
-- [ ] `PageHeader` — title + subtitle + right-slot (action button)
-- [ ] `StatusBadge` — pill, color-coded per status enum
-- [ ] `EmptyState` / `ErrorState` / `LoadingSkeletons`
-- [ ] `ConfirmDialog` — wraps shadcn AlertDialog
-- [ ] `FileUpload` — image (≤300KB, jpg/png/webp, local preview) + PDF (≤10MB); in UI-first phase renders preview only, no upload call
-- [ ] `ImageThumb` — accepts a `src` string; in UI-first phase receives a placeholder URL; in Phase 6 receives `pb.files.getURL(...)` output
-- [ ] `FormField` wrapper — label + input + inline error message
-- [ ] `LanguageTabs` — tabs ar/fr/tzm; text fields use `dir="auto"`
+- [x] `DataTable` — TanStack Table, client-sort + pagination, `ColumnDef<T>` typed
+- [x] `PageHeader` — title + description + right-slot action
+- [x] `StatusBadge` — pill, all enum values colour-coded
+- [x] `EmptyState` / `ErrorState` / `LoadingSkeletons` (TableSkeleton, CardSkeleton, PageSkeleton)
+- [x] `ConfirmDialog` — wraps AlertDialog
+- [x] `ImageThumb` — src string, fallback icon when empty
+- [x] `FormField` — label + input + inline error/hint
+- [x] `LanguageTabs` — tabs ar/fr/tzm, `dir="auto"` on content
+- [x] Home page with 4 KPI cards + 5 recharts charts (activity status donut, registration bar, activities by wilaya, mode donut, projects bar) + upcoming activities list + quick actions
+- [ ] `FileUpload` — image (≤300KB) + PDF (≤10MB), local preview only — **deferred to Phase 2** (needed in forms)
 
 ---
 
@@ -293,7 +294,7 @@ For each feature, replace the mock import with a `useQuery` / `useMutation` call
 
 ```
 Phase 0  Scaffold                          ✓ DONE
-Phase 1  App shell + shared primitives + mocks setup
+Phase 1  App shell + shared primitives + mocks setup  ✓ DONE
 Phase 2  Content management UI             (Activities → Establishments → Categories → Content)
 Phase 3  Engagement & moderation UI
 Phase 4  AI recommendations + Users UI
