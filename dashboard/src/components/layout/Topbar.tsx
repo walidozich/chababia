@@ -90,7 +90,7 @@ export function Topbar() {
   }
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-4 border-b border-outline bg-surface px-4 lg:px-6">
+    <header className="flex h-16 shrink-0 items-center gap-4 border-b border-outline-variant bg-surface-container-lowest px-4 lg:px-6">
       {/* Mobile menu */}
       <Sheet>
         <SheetTrigger asChild>
