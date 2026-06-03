@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { MOCK_ACTIVITIES, MOCK_CATEGORIES } from '@/mocks'
 import type { Activity } from '@/types/collections'
 import { can } from '@/lib/permissions'
-import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 const categoryName = (id: string) =>
   MOCK_CATEGORIES.find((c) => c.id === id)?.name ?? id
@@ -29,7 +29,8 @@ function VerifiedIndicator({ date }: { date: string }) {
 }
 
 export default function ActivitiesPage() {
-  const canWrite = can('write', 'activities', DEV_ROLE, DEV_IS_ADMIN)
+  const { role, isAdmin } = useAuthStore()
+  const canWrite = can('write', 'activities', role, isAdmin)
 
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')

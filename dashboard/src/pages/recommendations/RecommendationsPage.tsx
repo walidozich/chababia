@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { MOCK_SUGGESTIONS, MOCK_RECOMMENDATION_REQUESTS, MOCK_USERS } from '@/mocks'
 import type { RecommendationRequest, Suggestion } from '@/types/collections'
-import { DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 const schema = z.object({
   commune: z.string().min(2, 'Commune requise'),
@@ -50,7 +50,7 @@ function AccessDenied() {
 }
 
 export default function RecommendationsPage() {
-  const isSuperuser = [DEV_IS_ADMIN].some((value) => value)
+  const isSuperuser = useAuthStore((state) => state.isAdmin)
   const navigate = useNavigate()
   const [results, setResults] = useState<Suggestion[] | null>(null)
   const [isLoading, setIsLoading] = useState(false)

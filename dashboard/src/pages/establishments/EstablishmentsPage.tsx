@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { MOCK_ESTABLISHMENTS } from '@/mocks'
 import type { Establishment } from '@/types/collections'
 import { can } from '@/lib/permissions'
-import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 const TYPE_LABELS: Record<string, string> = {
   youth_house: 'Maison de jeunes',
@@ -33,7 +33,8 @@ function VerifiedIndicator({ date }: { date: string }) {
 }
 
 export default function EstablishmentsPage() {
-  const canWrite = can('write', 'establishments', DEV_ROLE, DEV_IS_ADMIN)
+  const { role, isAdmin } = useAuthStore()
+  const canWrite = can('write', 'establishments', role, isAdmin)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterType, setFilterType] = useState('all')

@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { MOCK_DOCUMENTS, MOCK_ESTABLISHMENTS } from '@/mocks'
 import { can } from '@/lib/permissions'
-import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 const schema = z.object({
   title: z.string().min(3, 'Titre requis'),
@@ -36,7 +36,8 @@ export default function DocumentFormPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const isEdit = Boolean(id)
-  const canWrite = can('write', 'documents', DEV_ROLE, DEV_IS_ADMIN)
+  const { role, isAdmin } = useAuthStore()
+  const canWrite = can('write', 'documents', role, isAdmin)
   const existing = isEdit ? MOCK_DOCUMENTS.find((d) => d.id === id) : undefined
 
   const { register, handleSubmit, control, reset, formState: { errors, isDirty } } = useForm<FormValues>({

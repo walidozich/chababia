@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { MOCK_ANNOUNCEMENTS, MOCK_ESTABLISHMENTS, MOCK_ACTIVITIES } from '@/mocks'
 import { can } from '@/lib/permissions'
-import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 const schema = z.object({
   title: z.string().min(3, 'Minimum 3 caractères'),
@@ -38,7 +38,8 @@ export default function AnnouncementFormPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const isEdit = Boolean(id)
-  const canWrite = can('write', 'announcements', DEV_ROLE, DEV_IS_ADMIN)
+  const { role, isAdmin } = useAuthStore()
+  const canWrite = can('write', 'announcements', role, isAdmin)
   const existing = isEdit ? MOCK_ANNOUNCEMENTS.find((a) => a.id === id) : undefined
 
   const { register, handleSubmit, control, reset, formState: { errors, isDirty } } = useForm<FormValues>({

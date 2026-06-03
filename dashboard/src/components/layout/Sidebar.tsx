@@ -19,11 +19,12 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { can } from '@/lib/permissions'
-import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
 import { useSidebarStore } from '@/stores/sidebarStore'
+import { useAuthStore } from '@/stores/authStore'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import type { Role } from '@/types/collections'
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'Super Admin',
@@ -94,13 +95,17 @@ const NAV_GROUPS: NavGroup[] = [
 function NavItemLink({
   item,
   collapsed,
+  role,
+  isAdmin,
 }: {
   item: NavItem
   collapsed: boolean
+  role: Role | null
+  isAdmin: boolean
 }) {
   const location = useLocation()
   const isVisible =
-    !item.resource || can('read', item.resource, DEV_ROLE, DEV_IS_ADMIN)
+    !item.resource || can('read', item.resource, role, isAdmin)
 
   if (!isVisible) return null
 
@@ -139,8 +144,9 @@ function NavItemLink({
 
 export function Sidebar() {
   const { collapsed, toggle } = useSidebarStore()
-  const roleName = DEV_ROLE
-  const userName = 'Mohamed Walid'
+  const { role, isAdmin, userName: storedUserName } = useAuthStore()
+  const roleName = isAdmin ? 'super_admin' : role
+  const userName = storedUserName ?? 'Utilisateur'
   const initials = userName
     .split(' ')
     .map((w) => w[0])
@@ -180,7 +186,7 @@ export function Sidebar() {
         <nav className="flex flex-col gap-1">
           {NAV_GROUPS.map((group, gi) => {
             const visibleItems = group.items.filter(
-              (item) => !item.resource || can('read', item.resource, DEV_ROLE, DEV_IS_ADMIN),
+              (item) => !item.resource || can('read', item.resource, role, isAdmin),
             )
             if (visibleItems.length === 0) return null
             return (
@@ -192,7 +198,13 @@ export function Sidebar() {
                 )}
                 {collapsed && gi > 0 && <Separator className="my-2" />}
                 {visibleItems.map((item) => (
-                  <NavItemLink key={item.to} item={item} collapsed={collapsed} />
+                  <NavItemLink
+                    key={item.to}
+                    item={item}
+                    collapsed={collapsed}
+                    role={role}
+                    isAdmin={isAdmin}
+                  />
                 ))}
               </div>
             )
@@ -221,10 +233,10 @@ export function Sidebar() {
               <span
                 className={cn(
                   'inline-block rounded-full px-1.5 py-0.5 text-xs font-semibold',
-                  ROLE_COLORS[roleName] ?? 'bg-surface-container text-on-surface-variant',
+                  roleName ? ROLE_COLORS[roleName] : 'bg-surface-container text-on-surface-variant',
                 )}
               >
-                {ROLE_LABELS[roleName] ?? roleName}
+                {roleName ? ROLE_LABELS[roleName] ?? roleName : 'Session'}
               </span>
             </div>
           </div>

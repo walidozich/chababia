@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { MOCK_ACTIVITIES, MOCK_CATEGORIES, MOCK_ESTABLISHMENTS } from '@/mocks'
 import { can } from '@/lib/permissions'
-import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -76,7 +76,8 @@ export default function ActivityFormPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const isEdit = Boolean(id)
-  const canWrite = can('write', 'activities', DEV_ROLE, DEV_IS_ADMIN)
+  const { role, isAdmin } = useAuthStore()
+  const canWrite = can('write', 'activities', role, isAdmin)
 
   const existing = isEdit ? MOCK_ACTIVITIES.find((a) => a.id === id) : undefined
 

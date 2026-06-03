@@ -17,7 +17,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { MOCK_ESTABLISHMENTS } from '@/mocks'
 import { can } from '@/lib/permissions'
-import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 const schema = z.object({
   name: z.string().min(3, 'Minimum 3 caractères'),
@@ -54,7 +54,8 @@ export default function EstablishmentFormPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const isEdit = Boolean(id)
-  const canWrite = can('write', 'establishments', DEV_ROLE, DEV_IS_ADMIN)
+  const { role, isAdmin } = useAuthStore()
+  const canWrite = can('write', 'establishments', role, isAdmin)
   const existing = isEdit ? MOCK_ESTABLISHMENTS.find((e) => e.id === id) : undefined
 
   const [translations, setTranslations] = useState<Record<string, { description: string; services_text: string; accessibility_text: string }>>({

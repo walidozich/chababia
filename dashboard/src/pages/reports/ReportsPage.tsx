@@ -21,7 +21,7 @@ import {
   MOCK_DOCUMENTS,
 } from '@/mocks'
 import type { ContentReport } from '@/types/collections'
-import { DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 const REASON_LABELS: Record<string, string> = {
   outdated_info: 'Info obsolète',
@@ -61,7 +61,7 @@ function resolveTarget(report: ContentReport): string {
 }
 
 export default function ReportsPage() {
-  const isSuperuser = [DEV_IS_ADMIN].some((value) => value)
+  const isSuperuser = useAuthStore((state) => state.isAdmin)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('new')
   const [filterTargetType, setFilterTargetType] = useState('all')

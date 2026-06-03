@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input'
 import { MOCK_DOCUMENTS } from '@/mocks'
 import type { Document } from '@/types/collections'
 import { can } from '@/lib/permissions'
-import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 const CATEGORY_LABELS: Record<string, string> = {
   orientation: 'Orientation',
@@ -29,7 +29,8 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 
 export default function DocumentsPage() {
-  const canWrite = can('write', 'documents', DEV_ROLE, DEV_IS_ADMIN)
+  const { role, isAdmin } = useAuthStore()
+  const canWrite = can('write', 'documents', role, isAdmin)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterCategory, setFilterCategory] = useState('all')

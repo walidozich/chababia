@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { MOCK_CATEGORIES } from '@/mocks'
 import type { Category } from '@/types/collections'
 import { can } from '@/lib/permissions'
-import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 const schema = z.object({
   name: z.string().min(2, 'Nom requis'),
@@ -26,7 +26,8 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 export default function CategoriesPage() {
-  const canWrite = can('write', 'categories', DEV_ROLE, DEV_IS_ADMIN)
+  const { role, isAdmin } = useAuthStore()
+  const canWrite = can('write', 'categories', role, isAdmin)
   const [editTarget, setEditTarget] = useState<Category | null>(null)
   const [isCreating, setIsCreating] = useState(false)
 

@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { MOCK_USERS } from '@/mocks'
 import type { InterestCategory } from '@/types/collections'
-import { DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 const schema = z.object({
   full_name: z.string().min(2, 'Nom requis'),
@@ -80,7 +80,7 @@ function AccessDenied() {
 }
 
 export default function UserFormPage() {
-  const isSuperuser = [DEV_IS_ADMIN].some((value) => value)
+  const isSuperuser = useAuthStore((state) => state.isAdmin)
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const isEdit = Boolean(id)

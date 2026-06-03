@@ -33,7 +33,7 @@ import { MOCK_REGISTRATIONS } from '@/mocks'
 import { MOCK_CONTENT_REPORTS } from '@/mocks'
 import { MOCK_ESTABLISHMENTS } from '@/mocks'
 import { MOCK_PROJECT_SUBMISSIONS } from '@/mocks'
-import { DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 // ─── Design tokens for recharts (hex) ────────────────────────────────────────
 const C = {
@@ -146,10 +146,11 @@ function KpiCard({ label, value, icon: Icon, accent, sub }: KpiProps) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
+  const isAdmin = useAuthStore((state) => state.isAdmin)
   const publishedActivities = MOCK_ACTIVITIES.filter((a) => a.status === 'published').length
   const activeEstablishments = MOCK_ESTABLISHMENTS.filter((e) => e.status === 'published').length
   const totalRegistrations = MOCK_REGISTRATIONS.length
-  const openReports = DEV_IS_ADMIN ? MOCK_CONTENT_REPORTS.filter((r) => r.status === 'new').length : null
+  const openReports = isAdmin ? MOCK_CONTENT_REPORTS.filter((r) => r.status === 'new').length : null
   const pendingProjects = MOCK_PROJECT_SUBMISSIONS.filter((p) => p.status === 'submitted').length
 
   return (

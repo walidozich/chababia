@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { MOCK_PROJECT_SUBMISSIONS, MOCK_ESTABLISHMENTS, MOCK_USERS } from '@/mocks'
 import type { ProjectStatus } from '@/types/collections'
 import { can } from '@/lib/permissions'
-import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -41,7 +41,8 @@ const DECISION_LABELS: Record<ProjectStatus, string> = {
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const canWrite = can('write', 'project_submissions', DEV_ROLE, DEV_IS_ADMIN)
+  const { role, isAdmin } = useAuthStore()
+  const canWrite = can('write', 'project_submissions', role, isAdmin)
   const submission = MOCK_PROJECT_SUBMISSIONS.find((item) => item.id === id)
   const [mentor, setMentor] = useState(submission?.assigned_mentor ?? '')
 

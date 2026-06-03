@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { MOCK_REGISTRATIONS, MOCK_ACTIVITIES } from '@/mocks'
 import type { Registration } from '@/types/collections'
 import { can } from '@/lib/permissions'
-import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 const activityTitle = (id: string) =>
   MOCK_ACTIVITIES.find((activity) => activity.id === id)?.title ?? id
@@ -40,7 +40,8 @@ function exportCSV(rows: Registration[]) {
 }
 
 export default function RegistrationsPage() {
-  const canWrite = can('write', 'registrations', DEV_ROLE, DEV_IS_ADMIN)
+  const { role, isAdmin } = useAuthStore()
+  const canWrite = can('write', 'registrations', role, isAdmin)
   const [search, setSearch] = useState('')
   const [filterActivity, setFilterActivity] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')

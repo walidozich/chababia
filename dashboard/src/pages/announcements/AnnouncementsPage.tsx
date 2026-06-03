@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input'
 import { MOCK_ANNOUNCEMENTS } from '@/mocks'
 import type { Announcement } from '@/types/collections'
 import { can } from '@/lib/permissions'
-import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 function VerifiedIndicator({ date }: { date: string }) {
   if (!date) return <span className="text-xs text-on-surface-variant/50">Non vérifié</span>
@@ -25,7 +25,8 @@ function VerifiedIndicator({ date }: { date: string }) {
 }
 
 export default function AnnouncementsPage() {
-  const canWrite = can('write', 'announcements', DEV_ROLE, DEV_IS_ADMIN)
+  const { role, isAdmin } = useAuthStore()
+  const canWrite = can('write', 'announcements', role, isAdmin)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterPriority, setFilterPriority] = useState('all')

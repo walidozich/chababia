@@ -13,13 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MOCK_TALENT_SHOWCASE, MOCK_USERS } from '@/mocks'
 import type { TalentShowcase } from '@/types/collections'
 import { can } from '@/lib/permissions'
-import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 const userName = (id: string) =>
   MOCK_USERS.find((user) => user.id === id)?.full_name ?? 'Inconnu'
 
 export default function TalentPage() {
-  const canWrite = can('write', 'talent_showcase', DEV_ROLE, DEV_IS_ADMIN)
+  const { role, isAdmin } = useAuthStore()
+  const canWrite = can('write', 'talent_showcase', role, isAdmin)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('draft')
 

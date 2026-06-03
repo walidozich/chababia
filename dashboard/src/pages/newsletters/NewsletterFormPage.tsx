@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { MOCK_NEWSLETTERS, MOCK_ESTABLISHMENTS, MOCK_ACTIVITIES } from '@/mocks'
 import { can } from '@/lib/permissions'
-import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 const schema = z.object({
   title: z.string().min(3, 'Titre requis'),
@@ -42,7 +42,8 @@ export default function NewsletterFormPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const isEdit = Boolean(id)
-  const canWrite = can('write', 'newsletters', DEV_ROLE, DEV_IS_ADMIN)
+  const { role, isAdmin } = useAuthStore()
+  const canWrite = can('write', 'newsletters', role, isAdmin)
   const existing = isEdit ? MOCK_NEWSLETTERS.find((n) => n.id === id) : undefined
 
   const { register, handleSubmit, control, reset, formState: { errors, isDirty } } = useForm<FormValues>({

@@ -1,8 +1,8 @@
 import { Fragment } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ChevronRight, Menu, LogOut, Settings, User } from 'lucide-react'
-import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
-import { useSidebarStore } from '@/stores/sidebarStore'
+import { pb } from '@/lib/pb'
+import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -16,6 +16,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Sidebar } from './Sidebar'
 
 const ROLE_LABELS: Record<string, string> = {
+  youth: 'Jeune',
   super_admin: 'Super Admin',
   wilaya_admin: 'Admin Wilaya',
   establishment_manager: 'Responsable',
@@ -57,14 +58,33 @@ function useBreadcrumbs() {
   return crumbs
 }
 
+function field(record: unknown, key: string): unknown {
+  if (!record || typeof record !== 'object') return undefined
+  return (record as Record<string, unknown>)[key]
+}
+
 export function Topbar() {
   const breadcrumbs = useBreadcrumbs()
-  useSidebarStore()
-  const roleLabel = ROLE_LABELS[DEV_ROLE] ?? DEV_ROLE
-  const isAdmin = DEV_IS_ADMIN
+  const navigate = useNavigate()
+  const { role, isAdmin, userName: storedUserName, clearAuth } = useAuthStore()
+  const roleName = isAdmin ? 'super_admin' : role
+  const roleLabel = roleName ? ROLE_LABELS[roleName] ?? roleName : 'Session'
 
-  const initials = 'MW'
-  const userName = 'Mohamed Walid'
+  const userName = storedUserName ?? 'Utilisateur'
+  const email = field(pb.authStore.record, 'email')
+  const emailLabel = typeof email === 'string' && email.length > 0 ? email : roleLabel
+  const initials = userName
+    .split(' ')
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || 'CH'
+
+  function handleLogout() {
+    pb.authStore.clear()
+    clearAuth()
+    void navigate('/login', { replace: true })
+  }
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-4 border-b border-outline bg-surface px-4 lg:px-6">
@@ -124,7 +144,7 @@ export function Topbar() {
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col gap-0.5">
                 <p className="text-label-sm font-semibold">{userName}</p>
-                <p className="text-xs text-on-surface-variant">admin@chababia.dz</p>
+                <p className="text-xs text-on-surface-variant">{emailLabel}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -137,7 +157,10 @@ export function Topbar() {
               Paramètres
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer gap-2 text-error focus:bg-error/10 focus:text-error">
+            <DropdownMenuItem
+              className="cursor-pointer gap-2 text-error focus:bg-error/10 focus:text-error"
+              onClick={handleLogout}
+            >
               <LogOut className="h-4 w-4" />
               Déconnexion
             </DropdownMenuItem>

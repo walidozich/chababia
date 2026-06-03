@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MOCK_USERS } from '@/mocks'
 import type { User } from '@/types/collections'
-import { DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 const ROLE_LABELS: Record<string, string> = {
   youth: 'Jeune',
@@ -32,7 +32,7 @@ function AccessDenied() {
 }
 
 export default function UsersPage() {
-  const isSuperuser = [DEV_IS_ADMIN].some((value) => value)
+  const isSuperuser = useAuthStore((state) => state.isAdmin)
   const [search, setSearch] = useState('')
   const [filterRole, setFilterRole] = useState('all')
   const [filterWilaya, setFilterWilaya] = useState('all')

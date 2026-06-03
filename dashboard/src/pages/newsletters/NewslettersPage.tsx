@@ -15,10 +15,11 @@ import { Input } from '@/components/ui/input'
 import { MOCK_NEWSLETTERS } from '@/mocks'
 import type { Newsletter } from '@/types/collections'
 import { can } from '@/lib/permissions'
-import { DEV_ROLE, DEV_IS_ADMIN } from '@/lib/devRole'
+import { useAuthStore } from '@/stores/authStore'
 
 export default function NewslettersPage() {
-  const canWrite = can('write', 'newsletters', DEV_ROLE, DEV_IS_ADMIN)
+  const { role, isAdmin } = useAuthStore()
+  const canWrite = can('write', 'newsletters', role, isAdmin)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterLang, setFilterLang] = useState('all')

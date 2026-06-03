@@ -850,7 +850,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 ```
 
-### 6b · Replace DEV_ROLE with real auth
+### 6b · Replace DEV_ROLE with real auth ✓ DONE
 
 After login page works, replace all `DEV_ROLE` / `DEV_IS_ADMIN` usages:
 
