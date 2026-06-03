@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type ColumnDef } from '@tanstack/react-table'
 import { Archive, Check, X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -7,31 +8,55 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { ImageThumb } from '@/components/shared/ImageThumb'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { TableSkeleton } from '@/components/shared/LoadingSkeletons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { MOCK_TALENT_SHOWCASE, MOCK_USERS } from '@/mocks'
-import type { TalentShowcase } from '@/types/collections'
+import type { TalentShowcase, TalentStatus } from '@/types/collections'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/authStore'
-
-const userName = (id: string) =>
-  MOCK_USERS.find((user) => user.id === id)?.full_name ?? 'Inconnu'
+import { COLLECTIONS, getFullList, qk, updateRecord } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
 
 export default function TalentPage() {
   const { role, isAdmin } = useAuthStore()
   const canWrite = can('write', 'talent_showcase', role, isAdmin)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('draft')
+  const queryClient = useQueryClient()
+
+  const talentQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.talentShowcase),
+    queryFn: () => getFullList<TalentShowcase>(COLLECTIONS.talentShowcase, {
+      sort: '-created',
+      expand: 'user',
+    }),
+    staleTime: STALE.talentShowcase,
+  })
+
+  const talents = talentQuery.data ?? []
 
   const filtered = useMemo(() => {
     const query = search.toLowerCase()
-    return MOCK_TALENT_SHOWCASE.filter((talent) => {
+    return talents.filter((talent) => {
       if (query && !talent.title.toLowerCase().includes(query)) return false
       if (filterStatus !== 'all' && talent.status !== filterStatus) return false
       return true
-    }).sort((a, b) => b.created.localeCompare(a.created))
-  }, [search, filterStatus])
+    })
+  }, [talents, search, filterStatus])
+
+  const statusMutation = useMutation({
+    mutationFn: ({ talent, status }: { talent: TalentShowcase; status: TalentStatus }) => updateRecord<TalentShowcase>(
+      COLLECTIONS.talentShowcase,
+      talent.id,
+      { status },
+    ),
+    onSuccess: (talent) => {
+      toast.success('Vitrine mise à jour', { description: talent.title })
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.talentShowcase) })
+    },
+  })
 
   const columns: ColumnDef<TalentShowcase>[] = [
     {
@@ -52,12 +77,12 @@ export default function TalentPage() {
     {
       accessorKey: 'user',
       header: 'Jeune',
-      cell: ({ row }) => <span className="text-on-surface-variant">{userName(row.original.user)}</span>,
+      cell: ({ row }) => <span className="text-on-surface-variant">{row.original.expand?.user?.full_name ?? 'Inconnu'}</span>,
     },
     {
       accessorKey: 'media',
       header: 'Média',
-      cell: ({ row }) => <ImageThumb src={row.original.media} alt={row.original.title} size="sm" />,
+      cell: ({ row }) => <ImageThumb src={row.original.media} alt={row.original.title} size="sm" record={row.original} />,
     },
     {
       accessorKey: 'external_link',
@@ -92,7 +117,8 @@ export default function TalentPage() {
                 variant="outline"
                 size="sm"
                 className="h-7 text-xs"
-                onClick={() => toast.success('Vitrine publiée (mock)', { description: row.original.title })}
+                disabled={statusMutation.isPending}
+                onClick={() => statusMutation.mutate({ talent: row.original, status: 'published' })}
               >
                 <Check className="h-3 w-3" />
                 Publier
@@ -101,7 +127,8 @@ export default function TalentPage() {
                 variant="outline"
                 size="sm"
                 className="h-7 text-xs"
-                onClick={() => toast.success('Vitrine rejetée (mock)', { description: row.original.title })}
+                disabled={statusMutation.isPending}
+                onClick={() => statusMutation.mutate({ talent: row.original, status: 'rejected' })}
               >
                 <X className="h-3 w-3" />
                 Rejeter
@@ -113,7 +140,7 @@ export default function TalentPage() {
               variant="outline"
               size="sm"
               className="h-7 text-xs"
-              onClick={() => toast.success('Vitrine archivée (mock)', { description: row.original.title })}
+              onClick={() => toast.error('Archivage non disponible', { description: 'Le schéma talent ne définit pas de statut archivé.' })}
             >
               <Archive className="h-3 w-3" />
               Archiver
@@ -128,7 +155,7 @@ export default function TalentPage() {
     <div className="space-y-6">
       <PageHeader
         title="Vitrine talents"
-        description={`${String(MOCK_TALENT_SHOWCASE.length)} propositions de talents`}
+        description={`${String(talents.length)} propositions de talents`}
       />
 
       <div className="flex flex-wrap gap-3">
@@ -154,7 +181,11 @@ export default function TalentPage() {
       </div>
 
       <div className="bento-card">
-        {filtered.length === 0 ? (
+        {talentQuery.isLoading ? (
+          <TableSkeleton rows={8} cols={7} />
+        ) : talentQuery.error ? (
+          <ErrorState onRetry={() => { void talentQuery.refetch() }} />
+        ) : filtered.length === 0 ? (
           <EmptyState title="Aucun talent trouvé" description="Modifiez les filtres de modération." />
         ) : (
           <DataTable columns={columns} data={filtered} pageSize={10} />

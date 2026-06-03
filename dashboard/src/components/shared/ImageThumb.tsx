@@ -1,11 +1,13 @@
 import { ImageOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { recordFileUrl } from '@/lib/pbData'
 
 interface ImageThumbProps {
   src?: string
   alt?: string
   className?: string
   size?: 'sm' | 'md' | 'lg'
+  record?: { id: string; collectionId?: string; collectionName?: string }
 }
 
 const SIZE_MAP = {
@@ -14,8 +16,10 @@ const SIZE_MAP = {
   lg: 'h-24 w-24',
 }
 
-export function ImageThumb({ src, alt = '', className, size = 'md' }: ImageThumbProps) {
-  if (!src) {
+export function ImageThumb({ src, alt = '', className, size = 'md', record }: ImageThumbProps) {
+  const resolvedSrc = record && src ? recordFileUrl(record, src) : src
+
+  if (!resolvedSrc) {
     return (
       <div
         className={cn(
@@ -30,7 +34,7 @@ export function ImageThumb({ src, alt = '', className, size = 'md' }: ImageThumb
   }
   return (
     <img
-      src={src}
+      src={resolvedSrc}
       alt={alt}
       className={cn('rounded-lg object-cover', SIZE_MAP[size], className)}
     />

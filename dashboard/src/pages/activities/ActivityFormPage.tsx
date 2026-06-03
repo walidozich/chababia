@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -17,9 +18,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { MOCK_ACTIVITIES, MOCK_CATEGORIES, MOCK_ESTABLISHMENTS } from '@/mocks'
+import { PageSkeleton } from '@/components/shared/LoadingSkeletons'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/authStore'
+import { COLLECTIONS, createRecord, getFullList, getOne, payloadWithFiles, qk, recordFileUrl, scrubServerFields, updateRecord } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
+import type { Activity, ActivityTranslation, Category, Establishment, TranslationLanguage } from '@/types/collections'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -78,8 +82,49 @@ export default function ActivityFormPage() {
   const isEdit = Boolean(id)
   const { role, isAdmin } = useAuthStore()
   const canWrite = can('write', 'activities', role, isAdmin)
+  const queryClient = useQueryClient()
 
-  const existing = isEdit ? MOCK_ACTIVITIES.find((a) => a.id === id) : undefined
+  const activityQuery = useQuery({
+    queryKey: qk.detail(COLLECTIONS.activities, id),
+    queryFn: () => getOne<Activity>(COLLECTIONS.activities, id ?? ''),
+    enabled: isEdit && Boolean(id),
+    staleTime: STALE.activities,
+  })
+
+  const categoriesQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.categories, 'active'),
+    queryFn: () => getFullList<Category>(COLLECTIONS.categories, {
+      fields: 'id,name,status',
+      filter: 'status = "active"',
+      sort: 'name',
+    }),
+    staleTime: STALE.categories,
+  })
+
+  const establishmentsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.establishments, 'published'),
+    queryFn: () => getFullList<Establishment>(COLLECTIONS.establishments, {
+      fields: 'id,name,status',
+      filter: 'status = "published"',
+      sort: 'name',
+    }),
+    staleTime: STALE.establishments,
+  })
+
+  const translationsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.activityTranslations, id),
+    queryFn: () => getFullList<ActivityTranslation>(COLLECTIONS.activityTranslations, {
+      filter: `activity = "${id ?? ''}"`,
+      sort: 'language',
+    }),
+    enabled: isEdit && Boolean(id),
+    staleTime: STALE.translations,
+  })
+
+  const existing = activityQuery.data
+  const categories = categoriesQuery.data ?? []
+  const establishments = establishmentsQuery.data ?? []
+  const savedTranslations = translationsQuery.data ?? []
 
   // Translation state (mock — no PB calls)
   const [translations, setTranslations] = useState<Record<string, { title: string; short_description: string; full_description: string }>>({
@@ -160,13 +205,74 @@ export default function ActivityFormPage() {
     }
   }, [existing, reset])
 
+  useEffect(() => {
+    if (savedTranslations.length > 0) {
+      setTranslations((prev) => {
+        const next = { ...prev }
+
+        for (const translation of savedTranslations) {
+          next[translation.language] = {
+            title: translation.title,
+            short_description: translation.short_description,
+            full_description: translation.full_description,
+          }
+        }
+
+        return next
+      })
+    }
+  }, [savedTranslations])
+
   const mode = watch('activity_mode')
 
+  const saveMutation = useMutation({
+    mutationFn: (data: FormValues) => {
+      const payload = payloadWithFiles(scrubServerFields(data), ['image'])
+      return isEdit && id
+        ? updateRecord<Activity>(COLLECTIONS.activities, id, payload)
+        : createRecord<Activity>(COLLECTIONS.activities, payload)
+    },
+    onSuccess: (activity) => {
+      toast.success(isEdit ? 'Activité mise à jour' : 'Activité créée', {
+        description: activity.title,
+      })
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.activities) })
+      navigate('/activities')
+    },
+  })
+
+  const translationMutation = useMutation({
+    mutationFn: (lang: TranslationLanguage) => {
+      if (!id) {
+        throw new Error('Créez d’abord l’activité avant d’ajouter des traductions.')
+      }
+
+      const values = translations[lang]
+      const existingTranslation = savedTranslations.find((translation) => translation.language === lang)
+      const payload = {
+        activity: id,
+        language: lang,
+        title: values?.title ?? '',
+        short_description: values?.short_description ?? '',
+        full_description: values?.full_description ?? '',
+      }
+
+      return existingTranslation
+        ? updateRecord<ActivityTranslation>(COLLECTIONS.activityTranslations, existingTranslation.id, payload)
+        : createRecord<ActivityTranslation>(COLLECTIONS.activityTranslations, payload)
+    },
+    onSuccess: (translation) => {
+      toast.success(`Traduction ${translation.language.toUpperCase()} enregistrée`)
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.activityTranslations) })
+    },
+  })
+
   function onSubmit(data: FormValues) {
-    toast.success(isEdit ? 'Activité mise à jour (mock)' : 'Activité créée (mock)', {
-      description: data.title,
-    })
-    navigate('/activities')
+    saveMutation.mutate(data)
+  }
+
+  if (isEdit && activityQuery.isLoading) {
+    return <PageSkeleton />
   }
 
   if (isEdit && !existing) {
@@ -194,7 +300,7 @@ export default function ActivityFormPage() {
               </Link>
             </Button>
             {canWrite && (
-              <Button type="submit" size="sm" disabled={!isDirty && isEdit}>
+              <Button type="submit" size="sm" disabled={saveMutation.isPending || (!isDirty && isEdit)}>
                 <Save className="h-4 w-4" />
                 {isEdit ? 'Enregistrer' : 'Créer'}
               </Button>
@@ -249,7 +355,7 @@ export default function ActivityFormPage() {
                             <SelectValue placeholder="Choisir une catégorie" />
                           </SelectTrigger>
                           <SelectContent>
-                            {MOCK_CATEGORIES.filter((c) => c.status === 'active').map((c) => (
+                            {categories.map((c) => (
                               <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                             ))}
                           </SelectContent>
@@ -268,7 +374,7 @@ export default function ActivityFormPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="">Aucun</SelectItem>
-                            {MOCK_ESTABLISHMENTS.filter((e) => e.status === 'published').map((e) => (
+                            {establishments.map((e) => (
                               <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
                             ))}
                           </SelectContent>
@@ -433,7 +539,7 @@ export default function ActivityFormPage() {
                     render={({ field }) => (
                       <FileUpload
                         accept="image"
-                        value={field.value}
+                        value={existing ? recordFileUrl(existing, field.value) : field.value}
                         onChange={field.onChange}
                         onClear={() => field.onChange('')}
                         disabled={!canWrite}
@@ -465,7 +571,7 @@ export default function ActivityFormPage() {
                   />
                 </FormField>
                 {canWrite && (
-                  <Button type="submit" className="w-full" disabled={!isDirty && isEdit}>
+                  <Button type="submit" className="w-full" disabled={saveMutation.isPending || (!isDirty && isEdit)}>
                     <Save className="h-4 w-4" />
                     {isEdit ? 'Enregistrer les modifications' : 'Créer l\'activité'}
                   </Button>
@@ -530,7 +636,8 @@ export default function ActivityFormPage() {
                   <Button
                     type="button"
                     size="sm"
-                    onClick={() => toast.success(`Traduction ${lang.toUpperCase()} enregistrée (mock)`)}
+                    disabled={translationMutation.isPending || !isEdit}
+                    onClick={() => translationMutation.mutate(lang)}
                   >
                     <Save className="h-4 w-4" />
                     Enregistrer traduction {lang.toUpperCase()}

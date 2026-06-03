@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -15,9 +16,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
-import { MOCK_ESTABLISHMENTS } from '@/mocks'
+import { PageSkeleton } from '@/components/shared/LoadingSkeletons'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/authStore'
+import { COLLECTIONS, createRecord, getFullList, getOne, payloadWithFiles, qk, recordFileUrl, scrubServerFields, updateRecord } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
+import type { Establishment, EstablishmentTranslation, TranslationLanguage } from '@/types/collections'
 
 const schema = z.object({
   name: z.string().min(3, 'Minimum 3 caractères'),
@@ -56,7 +60,27 @@ export default function EstablishmentFormPage() {
   const isEdit = Boolean(id)
   const { role, isAdmin } = useAuthStore()
   const canWrite = can('write', 'establishments', role, isAdmin)
-  const existing = isEdit ? MOCK_ESTABLISHMENTS.find((e) => e.id === id) : undefined
+  const queryClient = useQueryClient()
+
+  const establishmentQuery = useQuery({
+    queryKey: qk.detail(COLLECTIONS.establishments, id),
+    queryFn: () => getOne<Establishment>(COLLECTIONS.establishments, id ?? ''),
+    enabled: isEdit && Boolean(id),
+    staleTime: STALE.establishments,
+  })
+
+  const translationsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.establishmentTranslations, id),
+    queryFn: () => getFullList<EstablishmentTranslation>(COLLECTIONS.establishmentTranslations, {
+      filter: `establishment = "${id ?? ''}"`,
+      sort: 'language',
+    }),
+    enabled: isEdit && Boolean(id),
+    staleTime: STALE.translations,
+  })
+
+  const existing = establishmentQuery.data
+  const savedTranslations = translationsQuery.data ?? []
 
   const [translations, setTranslations] = useState<Record<string, { description: string; services_text: string; accessibility_text: string }>>({
     fr: { description: '', services_text: '', accessibility_text: '' },
@@ -70,12 +94,92 @@ export default function EstablishmentFormPage() {
   })
 
   useEffect(() => {
-    if (existing) reset({ ...existing })
+    if (existing) {
+      reset({
+        name: existing.name,
+        type: existing.type,
+        commune: existing.commune,
+        wilaya: existing.wilaya,
+        address: existing.address,
+        latitude: existing.latitude,
+        longitude: existing.longitude,
+        phone: existing.phone,
+        email: existing.email,
+        opening_hours: existing.opening_hours,
+        services: existing.services,
+        accessibility_notes: existing.accessibility_notes,
+        image: existing.image,
+        status: existing.status,
+      })
+    }
   }, [existing, reset])
 
+  useEffect(() => {
+    if (savedTranslations.length > 0) {
+      setTranslations((prev) => {
+        const next = { ...prev }
+
+        for (const translation of savedTranslations) {
+          next[translation.language] = {
+            description: translation.description,
+            services_text: translation.services_text,
+            accessibility_text: translation.accessibility_text,
+          }
+        }
+
+        return next
+      })
+    }
+  }, [savedTranslations])
+
+  const saveMutation = useMutation({
+    mutationFn: (data: FormValues) => {
+      const payload = payloadWithFiles(scrubServerFields(data), ['image'])
+      return isEdit && id
+        ? updateRecord<Establishment>(COLLECTIONS.establishments, id, payload)
+        : createRecord<Establishment>(COLLECTIONS.establishments, payload)
+    },
+    onSuccess: (establishment) => {
+      toast.success(isEdit ? 'Établissement mis à jour' : 'Établissement créé', {
+        description: establishment.name,
+      })
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.establishments) })
+      navigate('/establishments')
+    },
+  })
+
+  const translationMutation = useMutation({
+    mutationFn: (lang: TranslationLanguage) => {
+      if (!id) {
+        throw new Error('Créez d’abord l’établissement avant d’ajouter des traductions.')
+      }
+
+      const values = translations[lang]
+      const existingTranslation = savedTranslations.find((translation) => translation.language === lang)
+      const payload = {
+        establishment: id,
+        language: lang,
+        description: values?.description ?? '',
+        services_text: values?.services_text ?? '',
+        accessibility_text: values?.accessibility_text ?? '',
+      }
+
+      return existingTranslation
+        ? updateRecord<EstablishmentTranslation>(COLLECTIONS.establishmentTranslations, existingTranslation.id, payload)
+        : createRecord<EstablishmentTranslation>(COLLECTIONS.establishmentTranslations, payload)
+    },
+    onSuccess: (translation) => {
+      toast.success(`Traduction ${translation.language.toUpperCase()} enregistrée`)
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.establishmentTranslations) })
+    },
+  })
+
   function onSubmit(data: FormValues) {
-    toast.success(isEdit ? 'Établissement mis à jour (mock)' : 'Établissement créé (mock)', { description: data.name })
-    navigate('/establishments')
+    saveMutation.mutate(data)
+  }
+
+  if (isEdit && establishmentQuery.isLoading) {
+    return <PageSkeleton />
   }
 
   return (
@@ -86,7 +190,7 @@ export default function EstablishmentFormPage() {
         action={
           <div className="flex gap-2">
             <Button variant="outline" size="sm" asChild><Link to="/establishments"><ArrowLeft className="h-4 w-4" />Retour</Link></Button>
-            {canWrite && <Button type="submit" size="sm" disabled={!isDirty && isEdit}><Save className="h-4 w-4" />{isEdit ? 'Enregistrer' : 'Créer'}</Button>}
+            {canWrite && <Button type="submit" size="sm" disabled={saveMutation.isPending || (!isDirty && isEdit)}><Save className="h-4 w-4" />{isEdit ? 'Enregistrer' : 'Créer'}</Button>}
           </div>
         }
       />
@@ -138,7 +242,7 @@ export default function EstablishmentFormPage() {
               </SectionCard>
               <SectionCard title="4 · Image">
                 <Controller control={control} name="image" render={({ field }) => (
-                  <FileUpload accept="image" value={field.value} onChange={field.onChange} onClear={() => field.onChange('')} disabled={!canWrite} />
+                  <FileUpload accept="image" value={existing ? recordFileUrl(existing, field.value) : field.value} onChange={field.onChange} onClear={() => field.onChange('')} disabled={!canWrite} />
                 )} />
               </SectionCard>
             </div>
@@ -156,7 +260,7 @@ export default function EstablishmentFormPage() {
                     </Select>
                   )} />
                 </FormField>
-                {canWrite && <Button type="submit" className="w-full" disabled={!isDirty && isEdit}><Save className="h-4 w-4" />{isEdit ? 'Enregistrer' : 'Créer'}</Button>}
+                {canWrite && <Button type="submit" className="w-full" disabled={saveMutation.isPending || (!isDirty && isEdit)}><Save className="h-4 w-4" />{isEdit ? 'Enregistrer' : 'Créer'}</Button>}
               </SectionCard>
             </div>
           </div>
@@ -177,7 +281,7 @@ export default function EstablishmentFormPage() {
                   <FormField label="Accessibilité (texte localisé)">
                     <Textarea rows={2} value={translations[lang]?.accessibility_text ?? ''} onChange={(e) => setTranslations((p) => ({ ...p, [lang]: { ...p[lang]!, accessibility_text: e.target.value } }))} placeholder="Notes d'accessibilité en langue locale" />
                   </FormField>
-                  <Button type="button" size="sm" onClick={() => toast.success(`Traduction ${lang.toUpperCase()} enregistrée (mock)`)}><Save className="h-4 w-4" />Enregistrer {lang.toUpperCase()}</Button>
+                  <Button type="button" size="sm" disabled={translationMutation.isPending || !isEdit} onClick={() => translationMutation.mutate(lang)}><Save className="h-4 w-4" />Enregistrer {lang.toUpperCase()}</Button>
                 </div>
               )}
             </LanguageTabs>

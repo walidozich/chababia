@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type ColumnDef } from '@tanstack/react-table'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -10,16 +11,16 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { DataTable } from '@/components/shared/DataTable'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { TableSkeleton } from '@/components/shared/LoadingSkeletons'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { MOCK_ACTIVITIES, MOCK_CATEGORIES } from '@/mocks'
-import type { Activity } from '@/types/collections'
+import type { Activity, Category } from '@/types/collections'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/authStore'
-
-const categoryName = (id: string) =>
-  MOCK_CATEGORIES.find((c) => c.id === id)?.name ?? id
+import { COLLECTIONS, createRecord, deleteRecord, getFullList, qk, scrubServerFields } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
 
 function VerifiedIndicator({ date }: { date: string }) {
   if (!date) return <span className="text-xs text-on-surface-variant/50">Non vérifié</span>
@@ -37,21 +38,72 @@ export default function ActivitiesPage() {
   const [filterMode, setFilterMode] = useState('all')
   const [filterWilaya, setFilterWilaya] = useState('all')
   const [deleteTarget, setDeleteTarget] = useState<Activity | null>(null)
+  const queryClient = useQueryClient()
+
+  const activitiesQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.activities),
+    queryFn: () => getFullList<Activity>(COLLECTIONS.activities, {
+      sort: 'start_datetime',
+      expand: 'category,establishment',
+    }),
+    staleTime: STALE.activities,
+  })
+
+  const categoriesQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.categories, 'lookup'),
+    queryFn: () => getFullList<Category>(COLLECTIONS.categories, {
+      fields: 'id,name,status',
+      sort: 'name',
+    }),
+    staleTime: STALE.categories,
+  })
+
+  const activities = activitiesQuery.data ?? []
+  const categories = categoriesQuery.data ?? []
+  const categoryMap = useMemo(
+    () => new Map(categories.map((category) => [category.id, category.name])),
+    [categories],
+  )
 
   const wilayas = useMemo(
-    () => [...new Set(MOCK_ACTIVITIES.map((a) => a.wilaya))].sort(),
-    [],
+    () => [...new Set(activities.map((a) => a.wilaya))].sort(),
+    [activities],
   )
 
   const filtered = useMemo(() => {
-    return MOCK_ACTIVITIES.filter((a) => {
+    return activities.filter((a) => {
       if (search && !a.title.toLowerCase().includes(search.toLowerCase()) && !a.commune.toLowerCase().includes(search.toLowerCase())) return false
       if (filterStatus !== 'all' && a.status !== filterStatus) return false
       if (filterMode !== 'all' && a.activity_mode !== filterMode) return false
       if (filterWilaya !== 'all' && a.wilaya !== filterWilaya) return false
       return true
-    }).sort((a, b) => a.start_datetime.localeCompare(b.start_datetime))
-  }, [search, filterStatus, filterMode, filterWilaya])
+    })
+  }, [activities, search, filterStatus, filterMode, filterWilaya])
+
+  const deleteMutation = useMutation({
+    mutationFn: (activity: Activity) => deleteRecord(COLLECTIONS.activities, activity.id),
+    onSuccess: () => {
+      toast.success('Activité supprimée')
+      setDeleteTarget(null)
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.activities) })
+    },
+  })
+
+  const duplicateMutation = useMutation({
+    mutationFn: (activity: Activity) => createRecord<Activity>(COLLECTIONS.activities, {
+      ...scrubServerFields(activity as unknown as Record<string, unknown>),
+      title: `${activity.title} (copie)`,
+      status: 'draft',
+      image: '',
+    }),
+    onSuccess: (activity) => {
+      toast.success('Brouillon dupliqué', { description: activity.title })
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.activities) })
+    },
+  })
+
+  const isLoading = activitiesQuery.isLoading || categoriesQuery.isLoading
+  const error = activitiesQuery.error ?? categoriesQuery.error
 
   const columns: ColumnDef<Activity>[] = [
     {
@@ -60,7 +112,9 @@ export default function ActivitiesPage() {
       cell: ({ row }) => (
         <div className="max-w-[260px]">
           <p className="truncate font-semibold text-on-surface">{row.original.title}</p>
-          <p className="truncate text-xs text-on-surface-variant">{categoryName(row.original.category)}</p>
+          <p className="truncate text-xs text-on-surface-variant">
+            {row.original.expand?.category?.name ?? categoryMap.get(row.original.category) ?? row.original.category}
+          </p>
         </div>
       ),
     },
@@ -112,9 +166,8 @@ export default function ActivitiesPage() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
-                onClick={() => {
-                  toast.success('Brouillon dupliqué (mock)', { description: row.original.title })
-                }}
+                disabled={duplicateMutation.isPending}
+                onClick={() => duplicateMutation.mutate(row.original)}
               >
                 <Copy className="h-3.5 w-3.5" />
               </Button>
@@ -137,7 +190,7 @@ export default function ActivitiesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Activités"
-        description={`${MOCK_ACTIVITIES.length} activités au total`}
+        description={`${activities.length} activités au total`}
         action={
           canWrite ? (
             <Button asChild size="sm">
@@ -196,7 +249,11 @@ export default function ActivitiesPage() {
 
       {/* Table */}
       <div className="bento-card">
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <TableSkeleton rows={8} cols={7} />
+        ) : error ? (
+          <ErrorState onRetry={() => { void activitiesQuery.refetch(); void categoriesQuery.refetch() }} />
+        ) : filtered.length === 0 ? (
           <EmptyState
             title="Aucune activité trouvée"
             description="Modifiez les filtres ou créez une nouvelle activité."
@@ -214,10 +271,7 @@ export default function ActivitiesPage() {
         description={`« ${deleteTarget?.title} » sera supprimée définitivement.`}
         confirmLabel="Supprimer"
         destructive
-        onConfirm={() => {
-          toast.success('Activité supprimée (mock)')
-          setDeleteTarget(null)
-        }}
+        onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget) }}
       />
     </div>
   )

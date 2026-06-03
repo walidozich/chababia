@@ -23,17 +23,17 @@ import {
   Megaphone,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
-import { MOCK_ACTIVITIES } from '@/mocks'
-import { MOCK_REGISTRATIONS } from '@/mocks'
-import { MOCK_CONTENT_REPORTS } from '@/mocks'
-import { MOCK_ESTABLISHMENTS } from '@/mocks'
-import { MOCK_PROJECT_SUBMISSIONS } from '@/mocks'
 import { useAuthStore } from '@/stores/authStore'
+import type { Activity, ContentReport, Establishment, ProjectSubmission, Registration } from '@/types/collections'
+import { COLLECTIONS, getFullList, qk } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
 
 // ─── Design tokens for recharts (hex) ────────────────────────────────────────
 const C = {
@@ -52,47 +52,6 @@ const C = {
   textMuted: '#41493a',    // on-surface-variant
   orange: '#f4a261',
 }
-
-// ─── Derived data from mocks ──────────────────────────────────────────────────
-
-const activityStatusData = [
-  { name: 'Publiées', value: MOCK_ACTIVITIES.filter((a) => a.status === 'published').length, color: C.lime },
-  { name: 'Brouillons', value: MOCK_ACTIVITIES.filter((a) => a.status === 'draft').length, color: C.gray },
-  { name: 'Annulées', value: MOCK_ACTIVITIES.filter((a) => a.status === 'cancelled').length, color: C.errorContainer },
-  { name: 'Archivées', value: MOCK_ACTIVITIES.filter((a) => a.status === 'archived').length, color: C.outline },
-].filter((d) => d.value > 0)
-
-const registrationStatusData = [
-  { name: 'Inscrits', value: MOCK_REGISTRATIONS.filter((r) => r.status === 'registered').length, color: C.lime },
-  { name: 'Présents', value: MOCK_REGISTRATIONS.filter((r) => r.status === 'attended').length, color: C.forest },
-  { name: 'Liste att.', value: MOCK_REGISTRATIONS.filter((r) => r.status === 'waiting_list').length, color: C.gray },
-  { name: 'Annulés', value: MOCK_REGISTRATIONS.filter((r) => r.status === 'cancelled').length, color: C.errorContainer },
-].filter((d) => d.value > 0)
-
-const activitiesByWilaya = Object.entries(
-  MOCK_ACTIVITIES.reduce<Record<string, number>>((acc, a) => {
-    acc[a.wilaya] = (acc[a.wilaya] ?? 0) + 1
-    return acc
-  }, {}),
-).map(([wilaya, count]) => ({ wilaya, count }))
-
-const activityModeData = [
-  { name: 'Présentiel', value: MOCK_ACTIVITIES.filter((a) => a.activity_mode === 'physical').length, color: C.lime },
-  { name: 'En ligne', value: MOCK_ACTIVITIES.filter((a) => a.activity_mode === 'online').length, color: C.forest },
-  { name: 'Hybride', value: MOCK_ACTIVITIES.filter((a) => a.activity_mode === 'hybrid').length, color: C.gray },
-].filter((d) => d.value > 0)
-
-const projectStatusData = [
-  { name: 'Soumis', value: MOCK_PROJECT_SUBMISSIONS.filter((p) => p.status === 'submitted').length, color: C.lime },
-  { name: 'Examiné', value: MOCK_PROJECT_SUBMISSIONS.filter((p) => p.status === 'reviewed').length, color: C.gray },
-  { name: 'Accepté', value: MOCK_PROJECT_SUBMISSIONS.filter((p) => p.status === 'accepted').length, color: C.forest },
-  { name: 'Info manq.', value: MOCK_PROJECT_SUBMISSIONS.filter((p) => p.status === 'needs_more_info').length, color: C.orange },
-].filter((d) => d.value > 0)
-
-const upcomingActivities = [...MOCK_ACTIVITIES]
-  .filter((a) => a.status === 'published')
-  .sort((a, b) => a.start_datetime.localeCompare(b.start_datetime))
-  .slice(0, 5)
 
 // ─── Tooltip ─────────────────────────────────────────────────────────────────
 
@@ -147,17 +106,99 @@ function KpiCard({ label, value, icon: Icon, accent, sub }: KpiProps) {
 
 export default function HomePage() {
   const isAdmin = useAuthStore((state) => state.isAdmin)
-  const publishedActivities = MOCK_ACTIVITIES.filter((a) => a.status === 'published').length
-  const activeEstablishments = MOCK_ESTABLISHMENTS.filter((e) => e.status === 'published').length
-  const totalRegistrations = MOCK_REGISTRATIONS.length
-  const openReports = isAdmin ? MOCK_CONTENT_REPORTS.filter((r) => r.status === 'new').length : null
-  const pendingProjects = MOCK_PROJECT_SUBMISSIONS.filter((p) => p.status === 'submitted').length
+  const activitiesQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.activities, 'home'),
+    queryFn: () => getFullList<Activity>(COLLECTIONS.activities, {
+      fields: 'id,title,status,activity_mode,commune,wilaya,start_datetime',
+      sort: 'start_datetime',
+    }),
+    staleTime: STALE.activities,
+  })
+  const establishmentsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.establishments, 'home'),
+    queryFn: () => getFullList<Establishment>(COLLECTIONS.establishments, {
+      fields: 'id,status',
+    }),
+    staleTime: STALE.establishments,
+  })
+  const registrationsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.registrations, 'home'),
+    queryFn: () => getFullList<Registration>(COLLECTIONS.registrations, {
+      fields: 'id,status',
+    }),
+    staleTime: STALE.contentReports,
+  })
+  const reportsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.contentReports, 'home'),
+    queryFn: () => getFullList<ContentReport>(COLLECTIONS.contentReports, {
+      fields: 'id,status',
+    }),
+    enabled: isAdmin,
+    staleTime: STALE.projectSubmissions,
+  })
+  const projectsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.projectSubmissions, 'home'),
+    queryFn: () => getFullList<ProjectSubmission>(COLLECTIONS.projectSubmissions, {
+      fields: 'id,status',
+    }),
+    staleTime: STALE.registrations,
+  })
+
+  const activities = activitiesQuery.data ?? []
+  const establishments = establishmentsQuery.data ?? []
+  const registrations = registrationsQuery.data ?? []
+  const reports = reportsQuery.data ?? []
+  const projects = projectsQuery.data ?? []
+
+  const publishedActivities = activities.filter((a) => a.status === 'published').length
+  const activeEstablishments = establishments.filter((e) => e.status === 'published').length
+  const totalRegistrations = registrations.length
+  const openReports = isAdmin ? reports.filter((r) => r.status === 'new').length : null
+  const pendingProjects = projects.filter((p) => p.status === 'submitted').length
+
+  const activityStatusData = useMemo(() => [
+    { name: 'Publiées', value: activities.filter((a) => a.status === 'published').length, color: C.lime },
+    { name: 'Brouillons', value: activities.filter((a) => a.status === 'draft').length, color: C.gray },
+    { name: 'Annulées', value: activities.filter((a) => a.status === 'cancelled').length, color: C.errorContainer },
+    { name: 'Archivées', value: activities.filter((a) => a.status === 'archived').length, color: C.outline },
+  ].filter((d) => d.value > 0), [activities])
+
+  const registrationStatusData = useMemo(() => [
+    { name: 'Inscrits', value: registrations.filter((r) => r.status === 'registered').length, color: C.lime },
+    { name: 'Présents', value: registrations.filter((r) => r.status === 'attended').length, color: C.forest },
+    { name: 'Liste att.', value: registrations.filter((r) => r.status === 'waiting_list').length, color: C.gray },
+    { name: 'Annulés', value: registrations.filter((r) => r.status === 'cancelled').length, color: C.errorContainer },
+  ].filter((d) => d.value > 0), [registrations])
+
+  const activitiesByWilaya = useMemo(() => Object.entries(
+    activities.reduce<Record<string, number>>((acc, activity) => {
+      acc[activity.wilaya] = (acc[activity.wilaya] ?? 0) + 1
+      return acc
+    }, {}),
+  ).map(([wilaya, count]) => ({ wilaya, count })), [activities])
+
+  const activityModeData = useMemo(() => [
+    { name: 'Présentiel', value: activities.filter((a) => a.activity_mode === 'physical').length, color: C.lime },
+    { name: 'En ligne', value: activities.filter((a) => a.activity_mode === 'online').length, color: C.forest },
+    { name: 'Hybride', value: activities.filter((a) => a.activity_mode === 'hybrid').length, color: C.gray },
+  ].filter((d) => d.value > 0), [activities])
+
+  const projectStatusData = useMemo(() => [
+    { name: 'Soumis', value: projects.filter((p) => p.status === 'submitted').length, color: C.lime },
+    { name: 'Examiné', value: projects.filter((p) => p.status === 'reviewed').length, color: C.gray },
+    { name: 'Accepté', value: projects.filter((p) => p.status === 'accepted').length, color: C.forest },
+    { name: 'Info manq.', value: projects.filter((p) => p.status === 'needs_more_info').length, color: C.orange },
+  ].filter((d) => d.value > 0), [projects])
+
+  const upcomingActivities = useMemo(() => activities
+    .filter((a) => a.status === 'published')
+    .slice(0, 5), [activities])
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Tableau de bord"
-        description="Vue d'ensemble de la plateforme Chababia — Données de démonstration"
+        description="Vue d'ensemble de la plateforme Chababia"
         action={
           <Button asChild size="sm">
             <Link to="/activities/new">
@@ -175,21 +216,21 @@ export default function HomePage() {
           value={publishedActivities}
           icon={Zap}
           accent="bg-primary-container text-primary-on-container"
-          sub={`${MOCK_ACTIVITIES.length} total`}
+          sub={`${activities.length} total`}
         />
         <KpiCard
           label="Établissements actifs"
           value={activeEstablishments}
           icon={Building2}
           accent="bg-tertiary-container text-tertiary-on-container"
-          sub={`${MOCK_ESTABLISHMENTS.length} total`}
+          sub={`${establishments.length} total`}
         />
         <KpiCard
           label="Inscriptions"
           value={totalRegistrations}
           icon={ClipboardList}
           accent="bg-secondary-container text-secondary-on-container"
-          sub={`${MOCK_REGISTRATIONS.filter((r) => r.status === 'attended').length} présences`}
+          sub={`${registrations.filter((r) => r.status === 'attended').length} présences`}
         />
         {openReports !== null && (
           <KpiCard
@@ -243,7 +284,7 @@ export default function HomePage() {
             </ResponsiveContainer>
             {/* Center label */}
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-              <p className="text-headline-sm font-black text-on-surface">{MOCK_ACTIVITIES.length}</p>
+              <p className="text-headline-sm font-black text-on-surface">{activities.length}</p>
               <p className="text-xs text-on-surface-variant">total</p>
             </div>
           </div>

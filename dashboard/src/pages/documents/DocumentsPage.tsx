@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type ColumnDef } from '@tanstack/react-table'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -9,13 +10,16 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { DataTable } from '@/components/shared/DataTable'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { TableSkeleton } from '@/components/shared/LoadingSkeletons'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { MOCK_DOCUMENTS } from '@/mocks'
 import type { Document } from '@/types/collections'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/authStore'
+import { COLLECTIONS, deleteRecord, getFullList, qk } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
 
 const CATEGORY_LABELS: Record<string, string> = {
   orientation: 'Orientation',
@@ -36,14 +40,32 @@ export default function DocumentsPage() {
   const [filterCategory, setFilterCategory] = useState('all')
   const [filterLang, setFilterLang] = useState('all')
   const [deleteTarget, setDeleteTarget] = useState<Document | null>(null)
+  const queryClient = useQueryClient()
 
-  const filtered = useMemo(() => MOCK_DOCUMENTS.filter((d) => {
+  const documentsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.documents),
+    queryFn: () => getFullList<Document>(COLLECTIONS.documents, { sort: '-created' }),
+    staleTime: STALE.documents,
+  })
+
+  const documents = documentsQuery.data ?? []
+
+  const filtered = useMemo(() => documents.filter((d) => {
     if (search && !d.title.toLowerCase().includes(search.toLowerCase())) return false
     if (filterStatus !== 'all' && d.status !== filterStatus) return false
     if (filterCategory !== 'all' && d.category !== filterCategory) return false
     if (filterLang !== 'all' && d.language !== filterLang) return false
     return true
-  }).sort((a, b) => b.created.localeCompare(a.created)), [search, filterStatus, filterCategory, filterLang])
+  }), [documents, search, filterStatus, filterCategory, filterLang])
+
+  const deleteMutation = useMutation({
+    mutationFn: (document: Document) => deleteRecord(COLLECTIONS.documents, document.id),
+    onSuccess: () => {
+      toast.success('Document supprimé')
+      setDeleteTarget(null)
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.documents) })
+    },
+  })
 
   const columns: ColumnDef<Document>[] = [
     {
@@ -77,7 +99,7 @@ export default function DocumentsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Documents" description={`${MOCK_DOCUMENTS.length} documents`} action={canWrite ? <Button asChild size="sm"><Link to="/documents/new"><Plus className="h-4 w-4" />Nouveau document</Link></Button> : undefined} />
+      <PageHeader title="Documents" description={`${documents.length} documents`} action={canWrite ? <Button asChild size="sm"><Link to="/documents/new"><Plus className="h-4 w-4" />Nouveau document</Link></Button> : undefined} />
       <div className="flex flex-wrap gap-3">
         <Input placeholder="Rechercher..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-48" />
         <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -106,8 +128,16 @@ export default function DocumentsPage() {
           </SelectContent>
         </Select>
       </div>
-      <div className="bento-card"><DataTable columns={columns} data={filtered} pageSize={10} /></div>
-      <ConfirmDialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }} title="Supprimer le document ?" description={`« ${deleteTarget?.title} » sera supprimé.`} confirmLabel="Supprimer" destructive onConfirm={() => { toast.success('Document supprimé (mock)'); setDeleteTarget(null) }} />
+      <div className="bento-card">
+        {documentsQuery.isLoading ? (
+          <TableSkeleton rows={8} cols={5} />
+        ) : documentsQuery.error ? (
+          <ErrorState onRetry={() => { void documentsQuery.refetch() }} />
+        ) : (
+          <DataTable columns={columns} data={filtered} pageSize={10} />
+        )}
+      </div>
+      <ConfirmDialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }} title="Supprimer le document ?" description={`« ${deleteTarget?.title} » sera supprimé.`} confirmLabel="Supprimer" destructive onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget) }} />
     </div>
   )
 }

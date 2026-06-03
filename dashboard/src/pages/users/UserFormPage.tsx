@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -13,9 +14,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { MOCK_USERS } from '@/mocks'
-import type { InterestCategory } from '@/types/collections'
+import { PageSkeleton } from '@/components/shared/LoadingSkeletons'
+import type { InterestCategory, User } from '@/types/collections'
 import { useAuthStore } from '@/stores/authStore'
+import { COLLECTIONS, createRecord, getOne, qk, updateRecord } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
 
 const schema = z.object({
   full_name: z.string().min(2, 'Nom requis'),
@@ -84,7 +87,16 @@ export default function UserFormPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const isEdit = Boolean(id)
-  const existing = isEdit ? MOCK_USERS.find((user) => user.id === id) : undefined
+  const queryClient = useQueryClient()
+
+  const userQuery = useQuery({
+    queryKey: qk.detail(COLLECTIONS.users, id),
+    queryFn: () => getOne<User>(COLLECTIONS.users, id ?? ''),
+    enabled: isSuperuser && isEdit && Boolean(id),
+    staleTime: STALE.users,
+  })
+
+  const existing = userQuery.data
 
   const { register, handleSubmit, control, reset, formState: { errors, isDirty } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -117,7 +129,22 @@ export default function UserFormPage() {
     }
   }, [existing, reset])
 
+  const saveMutation = useMutation({
+    mutationFn: (data: FormValues) => isEdit && id
+      ? updateRecord<User>(COLLECTIONS.users, id, data)
+      : createRecord<User>(COLLECTIONS.users, data),
+    onSuccess: (user) => {
+      toast.success(isEdit ? 'Utilisateur mis à jour' : 'Utilisateur créé', { description: user.email })
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.users) })
+      void navigate('/users')
+    },
+  })
+
   if (!isSuperuser) return <AccessDenied />
+
+  if (isEdit && userQuery.isLoading) {
+    return <PageSkeleton />
+  }
 
   if (isEdit && !existing) {
     return (
@@ -131,8 +158,7 @@ export default function UserFormPage() {
   }
 
   function onSubmit(data: FormValues) {
-    toast.success(isEdit ? 'Utilisateur mis à jour (mock)' : 'Utilisateur créé (mock)', { description: data.email })
-    void navigate('/users')
+    saveMutation.mutate(data)
   }
 
   return (
@@ -153,7 +179,7 @@ export default function UserFormPage() {
                 Retour
               </Link>
             </Button>
-            <Button type="submit" size="sm" disabled={!isDirty && isEdit}>
+            <Button type="submit" size="sm" disabled={saveMutation.isPending || (!isDirty && isEdit)}>
               <Save className="h-4 w-4" />
               {isEdit ? 'Enregistrer' : 'Créer'}
             </Button>
@@ -250,7 +276,7 @@ export default function UserFormPage() {
                 <Label htmlFor="verified">Compte vérifié</Label>
               </div>
             )} />
-            <Button type="submit" className="w-full" disabled={!isDirty && isEdit}>
+            <Button type="submit" className="w-full" disabled={saveMutation.isPending || (!isDirty && isEdit)}>
               <Save className="h-4 w-4" />
               {isEdit ? 'Enregistrer' : 'Créer'}
             </Button>

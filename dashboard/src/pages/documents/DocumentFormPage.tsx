@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -13,9 +14,12 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { MOCK_DOCUMENTS, MOCK_ESTABLISHMENTS } from '@/mocks'
+import { PageSkeleton } from '@/components/shared/LoadingSkeletons'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/authStore'
+import { COLLECTIONS, createRecord, getFullList, getOne, payloadWithFiles, qk, scrubServerFields, updateRecord } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
+import type { Document, Establishment } from '@/types/collections'
 
 const schema = z.object({
   title: z.string().min(3, 'Titre requis'),
@@ -38,7 +42,26 @@ export default function DocumentFormPage() {
   const isEdit = Boolean(id)
   const { role, isAdmin } = useAuthStore()
   const canWrite = can('write', 'documents', role, isAdmin)
-  const existing = isEdit ? MOCK_DOCUMENTS.find((d) => d.id === id) : undefined
+  const queryClient = useQueryClient()
+
+  const documentQuery = useQuery({
+    queryKey: qk.detail(COLLECTIONS.documents, id),
+    queryFn: () => getOne<Document>(COLLECTIONS.documents, id ?? ''),
+    enabled: isEdit && Boolean(id),
+    staleTime: STALE.documents,
+  })
+
+  const establishmentsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.establishments, 'lookup'),
+    queryFn: () => getFullList<Establishment>(COLLECTIONS.establishments, {
+      fields: 'id,name,status',
+      sort: 'name',
+    }),
+    staleTime: STALE.establishments,
+  })
+
+  const existing = documentQuery.data
+  const establishments = establishmentsQuery.data ?? []
 
   const { register, handleSubmit, control, reset, formState: { errors, isDirty } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -49,9 +72,26 @@ export default function DocumentFormPage() {
     if (existing) reset({ title: existing.title, description: existing.description, file: existing.file, language: existing.language, category: existing.category, establishment: existing.establishment, status: existing.status })
   }, [existing, reset])
 
+  const saveMutation = useMutation({
+    mutationFn: (data: FormValues) => {
+      const payload = payloadWithFiles(scrubServerFields(data), ['file'])
+      return isEdit && id
+        ? updateRecord<Document>(COLLECTIONS.documents, id, payload)
+        : createRecord<Document>(COLLECTIONS.documents, payload)
+    },
+    onSuccess: (document) => {
+      toast.success(isEdit ? 'Document mis à jour' : 'Document créé', { description: document.title })
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.documents) })
+      navigate('/documents')
+    },
+  })
+
   function onSubmit(data: FormValues) {
-    toast.success(isEdit ? 'Document mis à jour (mock)' : 'Document créé (mock)', { description: data.title })
-    navigate('/documents')
+    saveMutation.mutate(data)
+  }
+
+  if (isEdit && documentQuery.isLoading) {
+    return <PageSkeleton />
   }
 
   return (
@@ -62,7 +102,7 @@ export default function DocumentFormPage() {
         action={
           <div className="flex gap-2">
             <Button variant="outline" size="sm" asChild><Link to="/documents"><ArrowLeft className="h-4 w-4" />Retour</Link></Button>
-            {canWrite && <Button type="submit" size="sm" disabled={!isDirty && isEdit}><Save className="h-4 w-4" />{isEdit ? 'Enregistrer' : 'Créer'}</Button>}
+            {canWrite && <Button type="submit" size="sm" disabled={saveMutation.isPending || (!isDirty && isEdit)}><Save className="h-4 w-4" />{isEdit ? 'Enregistrer' : 'Créer'}</Button>}
           </div>
         }
       />
@@ -116,7 +156,7 @@ export default function DocumentFormPage() {
               <Controller control={control} name="establishment" render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
-                  <SelectContent><SelectItem value="">Aucun</SelectItem>{MOCK_ESTABLISHMENTS.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent>
+                  <SelectContent><SelectItem value="">Aucun</SelectItem>{establishments.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent>
                 </Select>
               )} />
             </FormField>
@@ -132,7 +172,7 @@ export default function DocumentFormPage() {
                 </Select>
               )} />
             </FormField>
-            {canWrite && <Button type="submit" className="w-full" disabled={!isDirty && isEdit}><Save className="h-4 w-4" />{isEdit ? 'Enregistrer' : 'Créer'}</Button>}
+            {canWrite && <Button type="submit" className="w-full" disabled={saveMutation.isPending || (!isDirty && isEdit)}><Save className="h-4 w-4" />{isEdit ? 'Enregistrer' : 'Créer'}</Button>}
           </SectionCard>
         </div>
       </div>

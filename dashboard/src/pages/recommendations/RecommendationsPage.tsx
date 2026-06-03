@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -12,13 +13,16 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { FormField } from '@/components/shared/FormField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { DataTable } from '@/components/shared/DataTable'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { TableSkeleton } from '@/components/shared/LoadingSkeletons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { MOCK_SUGGESTIONS, MOCK_RECOMMENDATION_REQUESTS, MOCK_USERS } from '@/mocks'
 import type { RecommendationRequest, Suggestion } from '@/types/collections'
 import { useAuthStore } from '@/stores/authStore'
+import { COLLECTIONS, getFullList, qk } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
 
 const schema = z.object({
   commune: z.string().min(2, 'Commune requise'),
@@ -37,10 +41,6 @@ const TYPE_LABELS: Record<string, string> = {
   scientific_leisure_center: 'Centre loisirs scientifiques',
 }
 
-function adminName(id: string) {
-  return MOCK_USERS.find((user) => user.id === id)?.full_name ?? '—'
-}
-
 function AccessDenied() {
   return (
     <div className="bento-card py-16 text-center">
@@ -55,6 +55,17 @@ export default function RecommendationsPage() {
   const [results, setResults] = useState<Suggestion[] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [apiError, setApiError] = useState<ApiError | null>(null)
+  const historyQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.recommendationRequests),
+    queryFn: () => getFullList<RecommendationRequest>(COLLECTIONS.recommendationRequests, {
+      sort: '-created',
+      expand: 'admin_user',
+    }),
+    enabled: isSuperuser,
+    staleTime: STALE.recommendationRequests,
+  })
+
+  const requests = historyQuery.data ?? []
 
   const { register, handleSubmit, control, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -67,14 +78,14 @@ export default function RecommendationsPage() {
     setIsLoading(true)
     setApiError(null)
     window.setTimeout(() => {
-      setResults(MOCK_SUGGESTIONS)
+      setResults([])
       setIsLoading(false)
-      toast.success('Suggestions générées (mock)', { description: `${data.commune}, ${data.wilaya}` })
+      toast.info('Endpoint IA à connecter', { description: `${data.commune}, ${data.wilaya}` })
     }, 800)
   }
 
   function handleCreateDraft(suggestion: Suggestion) {
-    toast.success('Naviguez vers "Nouvelle activité" pour créer ce brouillon (mock)', {
+    toast.success('Naviguez vers "Nouvelle activité" pour créer ce brouillon', {
       description: suggestion.title,
       action: {
         label: 'Créer',
@@ -96,7 +107,7 @@ export default function RecommendationsPage() {
     {
       id: 'admin',
       header: 'Admin',
-      cell: ({ row }) => <span className="text-on-surface-variant">{adminName(row.original.admin_user)}</span>,
+      cell: ({ row }) => <span className="text-on-surface-variant">{row.original.expand?.admin_user?.full_name ?? '—'}</span>,
     },
     {
       accessorKey: 'created',
@@ -242,10 +253,16 @@ export default function RecommendationsPage() {
         <div>
           <h2 className="text-label-lg font-bold text-on-surface">Historique</h2>
           <p className="text-body-sm text-on-surface-variant">
-            {String(MOCK_RECOMMENDATION_REQUESTS.length)} demandes enregistrées
+            {String(requests.length)} demandes enregistrées
           </p>
         </div>
-        <DataTable columns={columns} data={MOCK_RECOMMENDATION_REQUESTS} pageSize={10} />
+        {historyQuery.isLoading ? (
+          <TableSkeleton rows={8} cols={6} />
+        ) : historyQuery.error ? (
+          <ErrorState onRetry={() => { void historyQuery.refetch() }} />
+        ) : (
+          <DataTable columns={columns} data={requests} pageSize={10} />
+        )}
       </div>
     </div>
   )

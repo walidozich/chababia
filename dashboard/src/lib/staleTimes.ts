@@ -11,5 +11,9 @@ export const STALE = {
   announcements: 10 * m,
   newsletters: 10 * m,
   talentShowcase: h,
+  projectSubmissions: 0,
+  contentReports: 0,
+  recommendationRequests: h,
+  users: h,
   registrations: 0,
 } as const

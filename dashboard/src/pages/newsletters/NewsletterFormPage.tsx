@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -13,9 +14,12 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { MOCK_NEWSLETTERS, MOCK_ESTABLISHMENTS, MOCK_ACTIVITIES } from '@/mocks'
+import { PageSkeleton } from '@/components/shared/LoadingSkeletons'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/authStore'
+import { COLLECTIONS, createRecord, getFullList, getOne, payloadWithFiles, qk, recordFileUrl, scrubServerFields, updateRecord } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
+import type { Activity, Establishment, Newsletter } from '@/types/collections'
 
 const schema = z.object({
   title: z.string().min(3, 'Titre requis'),
@@ -44,7 +48,36 @@ export default function NewsletterFormPage() {
   const isEdit = Boolean(id)
   const { role, isAdmin } = useAuthStore()
   const canWrite = can('write', 'newsletters', role, isAdmin)
-  const existing = isEdit ? MOCK_NEWSLETTERS.find((n) => n.id === id) : undefined
+  const queryClient = useQueryClient()
+
+  const newsletterQuery = useQuery({
+    queryKey: qk.detail(COLLECTIONS.newsletters, id),
+    queryFn: () => getOne<Newsletter>(COLLECTIONS.newsletters, id ?? ''),
+    enabled: isEdit && Boolean(id),
+    staleTime: STALE.newsletters,
+  })
+
+  const establishmentsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.establishments, 'lookup'),
+    queryFn: () => getFullList<Establishment>(COLLECTIONS.establishments, {
+      fields: 'id,name,status',
+      sort: 'name',
+    }),
+    staleTime: STALE.establishments,
+  })
+
+  const activitiesQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.activities, 'lookup'),
+    queryFn: () => getFullList<Activity>(COLLECTIONS.activities, {
+      fields: 'id,title,status,start_datetime',
+      sort: '-start_datetime',
+    }),
+    staleTime: STALE.activities,
+  })
+
+  const existing = newsletterQuery.data
+  const establishments = establishmentsQuery.data ?? []
+  const activities = activitiesQuery.data ?? []
 
   const { register, handleSubmit, control, reset, formState: { errors, isDirty } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -55,9 +88,26 @@ export default function NewsletterFormPage() {
     if (existing) reset({ ...existing, published_at: existing.published_at?.slice(0, 16) ?? '' })
   }, [existing, reset])
 
+  const saveMutation = useMutation({
+    mutationFn: (data: FormValues) => {
+      const payload = payloadWithFiles(scrubServerFields(data), ['thumbnail'])
+      return isEdit && id
+        ? updateRecord<Newsletter>(COLLECTIONS.newsletters, id, payload)
+        : createRecord<Newsletter>(COLLECTIONS.newsletters, payload)
+    },
+    onSuccess: (newsletter) => {
+      toast.success(isEdit ? 'Newsletter mise à jour' : 'Newsletter créée', { description: newsletter.title })
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.newsletters) })
+      navigate('/newsletters')
+    },
+  })
+
   function onSubmit(data: FormValues) {
-    toast.success(isEdit ? 'Newsletter mise à jour (mock)' : 'Newsletter créée (mock)', { description: data.title })
-    navigate('/newsletters')
+    saveMutation.mutate(data)
+  }
+
+  if (isEdit && newsletterQuery.isLoading) {
+    return <PageSkeleton />
   }
 
   return (
@@ -68,7 +118,7 @@ export default function NewsletterFormPage() {
         action={
           <div className="flex gap-2">
             <Button variant="outline" size="sm" asChild><Link to="/newsletters"><ArrowLeft className="h-4 w-4" />Retour</Link></Button>
-            {canWrite && <Button type="submit" size="sm" disabled={!isDirty && isEdit}><Save className="h-4 w-4" />{isEdit ? 'Enregistrer' : 'Créer'}</Button>}
+            {canWrite && <Button type="submit" size="sm" disabled={saveMutation.isPending || (!isDirty && isEdit)}><Save className="h-4 w-4" />{isEdit ? 'Enregistrer' : 'Créer'}</Button>}
           </div>
         }
       />
@@ -88,7 +138,7 @@ export default function NewsletterFormPage() {
                 <Controller control={control} name="related_activity" render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger><SelectValue placeholder="Aucune" /></SelectTrigger>
-                    <SelectContent><SelectItem value="">Aucune</SelectItem>{MOCK_ACTIVITIES.map((a) => <SelectItem key={a.id} value={a.id}>{a.title}</SelectItem>)}</SelectContent>
+                    <SelectContent><SelectItem value="">Aucune</SelectItem>{activities.map((a) => <SelectItem key={a.id} value={a.id}>{a.title}</SelectItem>)}</SelectContent>
                   </Select>
                 )} />
               </FormField>
@@ -96,7 +146,7 @@ export default function NewsletterFormPage() {
                 <Controller control={control} name="related_establishment" render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
-                    <SelectContent><SelectItem value="">Aucun</SelectItem>{MOCK_ESTABLISHMENTS.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent>
+                    <SelectContent><SelectItem value="">Aucun</SelectItem>{establishments.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent>
                   </Select>
                 )} />
               </FormField>
@@ -104,7 +154,7 @@ export default function NewsletterFormPage() {
           </SectionCard>
           <SectionCard title="Image de couverture">
             <Controller control={control} name="thumbnail" render={({ field }) => (
-              <FileUpload accept="image" value={field.value} onChange={field.onChange} onClear={() => field.onChange('')} disabled={!canWrite} />
+              <FileUpload accept="image" value={existing ? recordFileUrl(existing, field.value) : field.value} onChange={field.onChange} onClear={() => field.onChange('')} disabled={!canWrite} />
             )} />
           </SectionCard>
         </div>
@@ -137,7 +187,7 @@ export default function NewsletterFormPage() {
                 </Select>
               )} />
             </FormField>
-            {canWrite && <Button type="submit" className="w-full" disabled={!isDirty && isEdit}><Save className="h-4 w-4" />{isEdit ? 'Enregistrer' : 'Créer'}</Button>}
+            {canWrite && <Button type="submit" className="w-full" disabled={saveMutation.isPending || (!isDirty && isEdit)}><Save className="h-4 w-4" />{isEdit ? 'Enregistrer' : 'Créer'}</Button>}
           </SectionCard>
         </div>
       </div>

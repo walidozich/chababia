@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { type ColumnDef } from '@tanstack/react-table'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -8,20 +9,15 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { TableSkeleton } from '@/components/shared/LoadingSkeletons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import {
-  MOCK_CONTENT_REPORTS,
-  MOCK_USERS,
-  MOCK_ACTIVITIES,
-  MOCK_ESTABLISHMENTS,
-  MOCK_ANNOUNCEMENTS,
-  MOCK_NEWSLETTERS,
-  MOCK_DOCUMENTS,
-} from '@/mocks'
-import type { ContentReport } from '@/types/collections'
+import type { Activity, Announcement, ContentReport, Document, Establishment, Newsletter } from '@/types/collections'
 import { useAuthStore } from '@/stores/authStore'
+import { COLLECTIONS, getFullList, qk } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
 
 const REASON_LABELS: Record<string, string> = {
   outdated_info: 'Info obsolète',
@@ -39,22 +35,27 @@ const TARGET_LABELS: Record<string, string> = {
   document: 'Document',
 }
 
-function reporterName(id: string) {
-  return MOCK_USERS.find((user) => user.id === id)?.full_name ?? 'Inconnu'
-}
-
-function resolveTarget(report: ContentReport): string {
+function resolveTarget(
+  report: ContentReport,
+  targets: {
+    activities: Map<string, string>
+    establishments: Map<string, string>
+    announcements: Map<string, string>
+    newsletters: Map<string, string>
+    documents: Map<string, string>
+  },
+): string {
   switch (report.target_type) {
     case 'activity':
-      return MOCK_ACTIVITIES.find((activity) => activity.id === report.target_id)?.title ?? report.target_id
+      return targets.activities.get(report.target_id) ?? report.target_id
     case 'establishment':
-      return MOCK_ESTABLISHMENTS.find((establishment) => establishment.id === report.target_id)?.name ?? report.target_id
+      return targets.establishments.get(report.target_id) ?? report.target_id
     case 'announcement':
-      return MOCK_ANNOUNCEMENTS.find((announcement) => announcement.id === report.target_id)?.title ?? report.target_id
+      return targets.announcements.get(report.target_id) ?? report.target_id
     case 'newsletter':
-      return MOCK_NEWSLETTERS.find((newsletter) => newsletter.id === report.target_id)?.title ?? report.target_id
+      return targets.newsletters.get(report.target_id) ?? report.target_id
     case 'document':
-      return MOCK_DOCUMENTS.find((document) => document.id === report.target_id)?.title ?? report.target_id
+      return targets.documents.get(report.target_id) ?? report.target_id
     default:
       return report.target_id
   }
@@ -66,15 +67,69 @@ export default function ReportsPage() {
   const [filterStatus, setFilterStatus] = useState('new')
   const [filterTargetType, setFilterTargetType] = useState('all')
 
+  const reportsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.contentReports),
+    queryFn: () => getFullList<ContentReport>(COLLECTIONS.contentReports, {
+      sort: '-created',
+      expand: 'reporter',
+    }),
+    enabled: isSuperuser,
+    staleTime: STALE.contentReports,
+  })
+
+  const activitiesQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.activities, 'report-targets'),
+    queryFn: () => getFullList<Activity>(COLLECTIONS.activities, { fields: 'id,title' }),
+    enabled: isSuperuser,
+    staleTime: STALE.activities,
+  })
+
+  const establishmentsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.establishments, 'report-targets'),
+    queryFn: () => getFullList<Establishment>(COLLECTIONS.establishments, { fields: 'id,name' }),
+    enabled: isSuperuser,
+    staleTime: STALE.establishments,
+  })
+
+  const announcementsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.announcements, 'report-targets'),
+    queryFn: () => getFullList<Announcement>(COLLECTIONS.announcements, { fields: 'id,title' }),
+    enabled: isSuperuser,
+    staleTime: STALE.announcements,
+  })
+
+  const newslettersQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.newsletters, 'report-targets'),
+    queryFn: () => getFullList<Newsletter>(COLLECTIONS.newsletters, { fields: 'id,title' }),
+    enabled: isSuperuser,
+    staleTime: STALE.newsletters,
+  })
+
+  const documentsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.documents, 'report-targets'),
+    queryFn: () => getFullList<Document>(COLLECTIONS.documents, { fields: 'id,title' }),
+    enabled: isSuperuser,
+    staleTime: STALE.documents,
+  })
+
+  const reports = reportsQuery.data ?? []
+  const targets = useMemo(() => ({
+    activities: new Map((activitiesQuery.data ?? []).map((item) => [item.id, item.title])),
+    establishments: new Map((establishmentsQuery.data ?? []).map((item) => [item.id, item.name])),
+    announcements: new Map((announcementsQuery.data ?? []).map((item) => [item.id, item.title])),
+    newsletters: new Map((newslettersQuery.data ?? []).map((item) => [item.id, item.title])),
+    documents: new Map((documentsQuery.data ?? []).map((item) => [item.id, item.title])),
+  }), [activitiesQuery.data, announcementsQuery.data, documentsQuery.data, establishmentsQuery.data, newslettersQuery.data])
+
   const filtered = useMemo(() => {
     const query = search.toLowerCase()
-    return MOCK_CONTENT_REPORTS.filter((report) => {
+    return reports.filter((report) => {
       if (query && !report.details.toLowerCase().includes(query)) return false
       if (filterStatus !== 'all' && report.status !== filterStatus) return false
       if (filterTargetType !== 'all' && report.target_type !== filterTargetType) return false
       return true
-    }).sort((a, b) => b.created.localeCompare(a.created))
-  }, [search, filterStatus, filterTargetType])
+    })
+  }, [reports, search, filterStatus, filterTargetType])
 
   if (!isSuperuser) {
     return (
@@ -88,7 +143,7 @@ export default function ReportsPage() {
     {
       accessorKey: 'reporter',
       header: 'Reporter',
-      cell: ({ row }) => <span className="font-semibold text-on-surface">{reporterName(row.original.reporter)}</span>,
+      cell: ({ row }) => <span className="font-semibold text-on-surface">{row.original.expand?.reporter?.full_name ?? 'Inconnu'}</span>,
     },
     {
       accessorKey: 'target_type',
@@ -96,7 +151,7 @@ export default function ReportsPage() {
       cell: ({ row }) => (
         <div className="max-w-[220px]">
           <StatusBadge status={TARGET_LABELS[row.original.target_type] ?? row.original.target_type} />
-          <p className="mt-1 line-clamp-1 text-xs text-on-surface-variant">{resolveTarget(row.original)}</p>
+          <p className="mt-1 line-clamp-1 text-xs text-on-surface-variant">{resolveTarget(row.original, targets)}</p>
         </div>
       ),
     },
@@ -137,7 +192,7 @@ export default function ReportsPage() {
                   variant="outline"
                   size="sm"
                   className="h-7 text-xs"
-                  onClick={() => toast.success('Signalement résolu (mock)', { description: resolveTarget(row.original) })}
+                  onClick={() => toast.info('Traitement côté serveur requis', { description: resolveTarget(row.original, targets) })}
                 >
                   <CheckCircle className="h-3 w-3" />
                   Résolu
@@ -146,7 +201,7 @@ export default function ReportsPage() {
                   variant="outline"
                   size="sm"
                   className="h-7 text-xs"
-                  onClick={() => toast.success('Signalement ignoré (mock)', { description: resolveTarget(row.original) })}
+                  onClick={() => toast.info('Traitement côté serveur requis', { description: resolveTarget(row.original, targets) })}
                 >
                   <XCircle className="h-3 w-3" />
                   Ignoré
@@ -155,7 +210,7 @@ export default function ReportsPage() {
                   variant="outline"
                   size="sm"
                   className="h-7 text-xs"
-                  onClick={() => toast.success('Signalement examiné (mock)', { description: resolveTarget(row.original) })}
+                  onClick={() => toast.info('Traitement côté serveur requis', { description: resolveTarget(row.original, targets) })}
                 >
                   <Eye className="h-3 w-3" />
                   Examiné
@@ -172,7 +227,7 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Signalements"
-        description={`${String(MOCK_CONTENT_REPORTS.length)} signalements reçus`}
+        description={`${String(reports.length)} signalements reçus`}
       />
 
       <div className="flex flex-wrap gap-3">
@@ -212,7 +267,11 @@ export default function ReportsPage() {
       </div>
 
       <div className="bento-card">
-        {filtered.length === 0 ? (
+        {reportsQuery.isLoading ? (
+          <TableSkeleton rows={8} cols={7} />
+        ) : reportsQuery.error ? (
+          <ErrorState onRetry={() => { void reportsQuery.refetch() }} />
+        ) : filtered.length === 0 ? (
           <EmptyState title="Aucun signalement trouvé" description="Modifiez les filtres de modération." />
         ) : (
           <DataTable columns={columns} data={filtered} pageSize={10} />

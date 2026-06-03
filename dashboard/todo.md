@@ -867,7 +867,16 @@ After login page works, replace all `DEV_ROLE` / `DEV_IS_ADMIN` usages:
    ```
 3. In Sidebar.tsx — same swap for nav item visibility
 
-### 6c · Data source swap — query pattern
+### 6c · Data source swap — query pattern ✓ DONE
+
+Implemented with `src/lib/pbData.ts` shared helpers:
+- typed `getFullList` / `getOne` / create / update / delete wrappers
+- stable query keys via `qk`
+- dataURL file conversion for PB `FormData`
+- server-managed field scrubbing for mutation payloads
+- PB file URL resolution for thumbnails/previews
+
+All visible mock imports were removed from pages/components. Reports and project/talent archive actions respect current schema/server-hook limits instead of sending invalid client-managed statuses.
 
 For each collection, replace the mock import with a useQuery call:
 

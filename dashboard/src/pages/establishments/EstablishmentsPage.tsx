@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type ColumnDef } from '@tanstack/react-table'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -8,13 +9,16 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { DataTable } from '@/components/shared/DataTable'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { TableSkeleton } from '@/components/shared/LoadingSkeletons'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { MOCK_ESTABLISHMENTS } from '@/mocks'
 import type { Establishment } from '@/types/collections'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/authStore'
+import { COLLECTIONS, deleteRecord, getFullList, qk } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
 
 const TYPE_LABELS: Record<string, string> = {
   youth_house: 'Maison de jeunes',
@@ -39,16 +43,34 @@ export default function EstablishmentsPage() {
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterType, setFilterType] = useState('all')
   const [deleteTarget, setDeleteTarget] = useState<Establishment | null>(null)
+  const queryClient = useQueryClient()
+
+  const establishmentsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.establishments),
+    queryFn: () => getFullList<Establishment>(COLLECTIONS.establishments, { sort: 'name' }),
+    staleTime: STALE.establishments,
+  })
+
+  const establishments = establishmentsQuery.data ?? []
 
   const filtered = useMemo(() =>
-    MOCK_ESTABLISHMENTS.filter((e) => {
+    establishments.filter((e) => {
       if (search && !e.name.toLowerCase().includes(search.toLowerCase()) && !e.commune.toLowerCase().includes(search.toLowerCase())) return false
       if (filterStatus !== 'all' && e.status !== filterStatus) return false
       if (filterType !== 'all' && e.type !== filterType) return false
       return true
     }),
-    [search, filterStatus, filterType],
+    [establishments, search, filterStatus, filterType],
   )
+
+  const deleteMutation = useMutation({
+    mutationFn: (establishment: Establishment) => deleteRecord(COLLECTIONS.establishments, establishment.id),
+    onSuccess: () => {
+      toast.success('Établissement supprimé')
+      setDeleteTarget(null)
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.establishments) })
+    },
+  })
 
   const columns: ColumnDef<Establishment>[] = [
     {
@@ -84,7 +106,7 @@ export default function EstablishmentsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Établissements"
-        description={`${MOCK_ESTABLISHMENTS.length} établissements`}
+        description={`${establishments.length} établissements`}
         action={canWrite ? <Button asChild size="sm"><Link to="/establishments/new"><Plus className="h-4 w-4" />Nouvel établissement</Link></Button> : undefined}
       />
       <div className="flex flex-wrap gap-3">
@@ -107,7 +129,11 @@ export default function EstablishmentsPage() {
         </Select>
       </div>
       <div className="bento-card">
-        {filtered.length === 0
+        {establishmentsQuery.isLoading
+          ? <TableSkeleton rows={8} cols={6} />
+          : establishmentsQuery.error
+            ? <ErrorState onRetry={() => { void establishmentsQuery.refetch() }} />
+            : filtered.length === 0
           ? <EmptyState title="Aucun établissement trouvé" description="Modifiez les filtres ou créez un nouvel établissement." />
           : <DataTable columns={columns} data={filtered} pageSize={10} />
         }
@@ -119,7 +145,7 @@ export default function EstablishmentsPage() {
         description={`« ${deleteTarget?.name} » sera supprimé définitivement.`}
         confirmLabel="Supprimer"
         destructive
-        onConfirm={() => { toast.success('Établissement supprimé (mock)'); setDeleteTarget(null) }}
+        onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget) }}
       />
     </div>
   )

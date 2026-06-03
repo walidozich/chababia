@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -9,14 +10,17 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { DataTable } from '@/components/shared/DataTable'
 import { FormField } from '@/components/shared/FormField'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { TableSkeleton } from '@/components/shared/LoadingSkeletons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { MOCK_CATEGORIES } from '@/mocks'
 import type { Category } from '@/types/collections'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/authStore'
+import { COLLECTIONS, createRecord, getFullList, qk, updateRecord } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
 
 const schema = z.object({
   name: z.string().min(2, 'Nom requis'),
@@ -30,6 +34,15 @@ export default function CategoriesPage() {
   const canWrite = can('write', 'categories', role, isAdmin)
   const [editTarget, setEditTarget] = useState<Category | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const queryClient = useQueryClient()
+
+  const categoriesQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.categories),
+    queryFn: () => getFullList<Category>(COLLECTIONS.categories, { sort: 'name' }),
+    staleTime: STALE.categories,
+  })
+
+  const categories = categoriesQuery.data ?? []
 
   const { register, handleSubmit, control, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -48,10 +61,20 @@ export default function CategoriesPage() {
     setIsCreating(false)
   }
 
+  const saveMutation = useMutation({
+    mutationFn: (data: FormValues) => editTarget
+      ? updateRecord<Category>(COLLECTIONS.categories, editTarget.id, data)
+      : createRecord<Category>(COLLECTIONS.categories, data),
+    onSuccess: (category) => {
+      toast.success(editTarget ? `Catégorie « ${category.name} » mise à jour` : `Catégorie « ${category.name} » créée`)
+      setEditTarget(null)
+      setIsCreating(false)
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.categories) })
+    },
+  })
+
   function onSubmit(data: FormValues) {
-    toast.success(editTarget ? `Catégorie « ${data.name} » mise à jour (mock)` : `Catégorie « ${data.name} » créée (mock)`)
-    setEditTarget(null)
-    setIsCreating(false)
+    saveMutation.mutate(data)
   }
 
   const columns: ColumnDef<Category>[] = [
@@ -85,11 +108,17 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Catégories"
-        description={`${MOCK_CATEGORIES.length} catégories`}
+        description={`${categories.length} catégories`}
         action={canWrite ? <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4" />Nouvelle catégorie</Button> : undefined}
       />
       <div className="bento-card">
-        <DataTable columns={columns} data={MOCK_CATEGORIES} pageSize={10} />
+        {categoriesQuery.isLoading ? (
+          <TableSkeleton rows={8} cols={4} />
+        ) : categoriesQuery.error ? (
+          <ErrorState onRetry={() => { void categoriesQuery.refetch() }} />
+        ) : (
+          <DataTable columns={columns} data={categories} pageSize={10} />
+        )}
       </div>
 
       <Dialog open={isCreating || editTarget !== null} onOpenChange={(open) => { if (!open) { setIsCreating(false); setEditTarget(null) } }}>
@@ -117,7 +146,7 @@ export default function CategoriesPage() {
             </FormField>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => { setIsCreating(false); setEditTarget(null) }}>Annuler</Button>
-              <Button type="submit"><Save className="h-4 w-4" />{editTarget ? 'Enregistrer' : 'Créer'}</Button>
+              <Button type="submit" disabled={saveMutation.isPending}><Save className="h-4 w-4" />{editTarget ? 'Enregistrer' : 'Créer'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

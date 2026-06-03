@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type ColumnDef } from '@tanstack/react-table'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -9,13 +10,16 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { DataTable } from '@/components/shared/DataTable'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { TableSkeleton } from '@/components/shared/LoadingSkeletons'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { MOCK_ANNOUNCEMENTS } from '@/mocks'
 import type { Announcement } from '@/types/collections'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/authStore'
+import { COLLECTIONS, deleteRecord, getFullList, qk } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
 
 function VerifiedIndicator({ date }: { date: string }) {
   if (!date) return <span className="text-xs text-on-surface-variant/50">Non vérifié</span>
@@ -32,14 +36,32 @@ export default function AnnouncementsPage() {
   const [filterPriority, setFilterPriority] = useState('all')
   const [filterLang, setFilterLang] = useState('all')
   const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null)
+  const queryClient = useQueryClient()
 
-  const filtered = useMemo(() => MOCK_ANNOUNCEMENTS.filter((a) => {
+  const announcementsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.announcements),
+    queryFn: () => getFullList<Announcement>(COLLECTIONS.announcements, { sort: '-created' }),
+    staleTime: STALE.announcements,
+  })
+
+  const announcements = announcementsQuery.data ?? []
+
+  const filtered = useMemo(() => announcements.filter((a) => {
     if (search && !a.title.toLowerCase().includes(search.toLowerCase())) return false
     if (filterStatus !== 'all' && a.status !== filterStatus) return false
     if (filterPriority !== 'all' && a.priority !== filterPriority) return false
     if (filterLang !== 'all' && a.language !== filterLang) return false
     return true
-  }).sort((a, b) => b.created.localeCompare(a.created)), [search, filterStatus, filterPriority, filterLang])
+  }), [announcements, search, filterStatus, filterPriority, filterLang])
+
+  const deleteMutation = useMutation({
+    mutationFn: (announcement: Announcement) => deleteRecord(COLLECTIONS.announcements, announcement.id),
+    onSuccess: () => {
+      toast.success('Annonce supprimée')
+      setDeleteTarget(null)
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.announcements) })
+    },
+  })
 
   const columns: ColumnDef<Announcement>[] = [
     {
@@ -72,7 +94,7 @@ export default function AnnouncementsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Annonces"
-        description={`${MOCK_ANNOUNCEMENTS.length} annonces`}
+        description={`${announcements.length} annonces`}
         action={canWrite ? <Button asChild size="sm"><Link to="/announcements/new"><Plus className="h-4 w-4" />Nouvelle annonce</Link></Button> : undefined}
       />
       <div className="flex flex-wrap gap-3">
@@ -105,14 +127,22 @@ export default function AnnouncementsPage() {
           </SelectContent>
         </Select>
       </div>
-      <div className="bento-card"><DataTable columns={columns} data={filtered} pageSize={10} /></div>
+      <div className="bento-card">
+        {announcementsQuery.isLoading ? (
+          <TableSkeleton rows={8} cols={6} />
+        ) : announcementsQuery.error ? (
+          <ErrorState onRetry={() => { void announcementsQuery.refetch() }} />
+        ) : (
+          <DataTable columns={columns} data={filtered} pageSize={10} />
+        )}
+      </div>
       <ConfirmDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
         title="Supprimer l'annonce ?"
         description={`« ${deleteTarget?.title} » sera supprimée.`}
         confirmLabel="Supprimer" destructive
-        onConfirm={() => { toast.success('Annonce supprimée (mock)'); setDeleteTarget(null) }}
+        onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget) }}
       />
     </div>
   )

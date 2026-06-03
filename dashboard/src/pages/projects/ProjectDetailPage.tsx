@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ArrowLeft, Archive, Check, ClipboardCheck, HelpCircle, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -7,10 +8,12 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
-import { MOCK_PROJECT_SUBMISSIONS, MOCK_ESTABLISHMENTS, MOCK_USERS } from '@/mocks'
-import type { ProjectStatus } from '@/types/collections'
+import { PageSkeleton } from '@/components/shared/LoadingSkeletons'
+import type { ProjectStatus, ProjectSubmission } from '@/types/collections'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/authStore'
+import { COLLECTIONS, getOne, qk, updateRecord } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -31,20 +34,45 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   )
 }
 
-const DECISION_LABELS: Record<ProjectStatus, string> = {
-  submitted: 'soumis',
-  reviewed: 'examiné',
-  accepted: 'accepté',
-  rejected: 'rejeté',
-  needs_more_info: 'infos manquantes',
-}
-
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { role, isAdmin } = useAuthStore()
   const canWrite = can('write', 'project_submissions', role, isAdmin)
-  const submission = MOCK_PROJECT_SUBMISSIONS.find((item) => item.id === id)
-  const [mentor, setMentor] = useState(submission?.assigned_mentor ?? '')
+  const queryClient = useQueryClient()
+  const [mentor, setMentor] = useState('')
+
+  const projectQuery = useQuery({
+    queryKey: qk.detail(COLLECTIONS.projectSubmissions, id),
+    queryFn: () => getOne<ProjectSubmission>(COLLECTIONS.projectSubmissions, id ?? '', {
+      expand: 'user,establishment',
+    }),
+    enabled: Boolean(id),
+    staleTime: STALE.projectSubmissions,
+  })
+
+  const submission = projectQuery.data
+
+  useEffect(() => {
+    if (submission) {
+      setMentor(submission.assigned_mentor)
+    }
+  }, [submission])
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: Partial<Pick<ProjectSubmission, 'assigned_mentor' | 'status'>>) => updateRecord<ProjectSubmission>(
+      COLLECTIONS.projectSubmissions,
+      id ?? '',
+      payload,
+    ),
+    onSuccess: (updatedSubmission) => {
+      toast.success('Projet mis à jour', { description: updatedSubmission.project_title })
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.projectSubmissions) })
+    },
+  })
+
+  if (projectQuery.isLoading) {
+    return <PageSkeleton />
+  }
 
   if (!submission) {
     return (
@@ -58,12 +86,16 @@ export default function ProjectDetailPage() {
   }
 
   const currentSubmission = submission
-  const user = MOCK_USERS.find((item) => item.id === currentSubmission.user)
-  const establishment = MOCK_ESTABLISHMENTS.find((item) => item.id === currentSubmission.establishment)
+  const user = currentSubmission.expand?.user
+  const establishment = currentSubmission.expand?.establishment
 
   function handleStatusChange(status: ProjectStatus | 'archived') {
-    const label = status === 'archived' ? 'archivé' : DECISION_LABELS[status]
-    toast.success(`Statut mis à jour : ${label} (mock)`, { description: currentSubmission.project_title })
+    if (status === 'archived') {
+      toast.error('Archivage non disponible', { description: 'Le schéma projet ne définit pas de statut archivé.' })
+      return
+    }
+
+    updateMutation.mutate({ status })
   }
 
   return (
@@ -118,7 +150,7 @@ export default function ProjectDetailPage() {
                     variant="outline"
                     size="sm"
                     className="w-full justify-start"
-                    disabled={!canWrite}
+                    disabled={!canWrite || updateMutation.isPending}
                     onClick={() => {
                       handleStatusChange('reviewed')
                     }}
@@ -130,7 +162,7 @@ export default function ProjectDetailPage() {
                     variant="outline"
                     size="sm"
                     className="w-full justify-start"
-                    disabled={!canWrite}
+                    disabled={!canWrite || updateMutation.isPending}
                     onClick={() => {
                       handleStatusChange('accepted')
                     }}
@@ -142,7 +174,7 @@ export default function ProjectDetailPage() {
                     variant="outline"
                     size="sm"
                     className="w-full justify-start"
-                    disabled={!canWrite}
+                    disabled={!canWrite || updateMutation.isPending}
                     onClick={() => {
                       handleStatusChange('rejected')
                     }}
@@ -154,7 +186,7 @@ export default function ProjectDetailPage() {
                     variant="outline"
                     size="sm"
                     className="w-full justify-start"
-                    disabled={!canWrite}
+                    disabled={!canWrite || updateMutation.isPending}
                     onClick={() => {
                       handleStatusChange('needs_more_info')
                     }}
@@ -170,7 +202,7 @@ export default function ProjectDetailPage() {
                     variant="outline"
                     size="sm"
                     className="w-full justify-start"
-                    disabled={!canWrite}
+                    disabled={!canWrite || updateMutation.isPending}
                     onClick={() => {
                       handleStatusChange('accepted')
                     }}
@@ -182,7 +214,7 @@ export default function ProjectDetailPage() {
                     variant="outline"
                     size="sm"
                     className="w-full justify-start"
-                    disabled={!canWrite}
+                    disabled={!canWrite || updateMutation.isPending}
                     onClick={() => {
                       handleStatusChange('rejected')
                     }}
@@ -194,7 +226,7 @@ export default function ProjectDetailPage() {
                     variant="outline"
                     size="sm"
                     className="w-full justify-start"
-                    disabled={!canWrite}
+                    disabled={!canWrite || updateMutation.isPending}
                     onClick={() => {
                       handleStatusChange('needs_more_info')
                     }}
@@ -209,7 +241,7 @@ export default function ProjectDetailPage() {
                   variant="outline"
                   size="sm"
                   className="w-full justify-start"
-                  disabled={!canWrite}
+                  disabled={!canWrite || updateMutation.isPending}
                   onClick={() => {
                     handleStatusChange('archived')
                   }}
@@ -223,7 +255,7 @@ export default function ProjectDetailPage() {
                   variant="outline"
                   size="sm"
                   className="w-full justify-start"
-                  disabled={!canWrite}
+                  disabled={!canWrite || updateMutation.isPending}
                   onClick={() => {
                     handleStatusChange('reviewed')
                   }}
@@ -244,8 +276,13 @@ export default function ProjectDetailPage() {
                 onChange={(event) => {
                   setMentor(event.target.value)
                 }}
+                onBlur={() => {
+                  if (mentor !== currentSubmission.assigned_mentor) {
+                    updateMutation.mutate({ assigned_mentor: mentor })
+                  }
+                }}
                 placeholder="Nom du mentor"
-                disabled={!canWrite}
+                disabled={!canWrite || updateMutation.isPending}
               />
             </div>
           </SectionCard>

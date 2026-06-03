@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -12,9 +13,12 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { MOCK_ANNOUNCEMENTS, MOCK_ESTABLISHMENTS, MOCK_ACTIVITIES } from '@/mocks'
+import { PageSkeleton } from '@/components/shared/LoadingSkeletons'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/authStore'
+import { COLLECTIONS, createRecord, getFullList, getOne, qk, updateRecord } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
+import type { Activity, Announcement, Establishment } from '@/types/collections'
 
 const schema = z.object({
   title: z.string().min(3, 'Minimum 3 caractères'),
@@ -40,7 +44,36 @@ export default function AnnouncementFormPage() {
   const isEdit = Boolean(id)
   const { role, isAdmin } = useAuthStore()
   const canWrite = can('write', 'announcements', role, isAdmin)
-  const existing = isEdit ? MOCK_ANNOUNCEMENTS.find((a) => a.id === id) : undefined
+  const queryClient = useQueryClient()
+
+  const announcementQuery = useQuery({
+    queryKey: qk.detail(COLLECTIONS.announcements, id),
+    queryFn: () => getOne<Announcement>(COLLECTIONS.announcements, id ?? ''),
+    enabled: isEdit && Boolean(id),
+    staleTime: STALE.announcements,
+  })
+
+  const establishmentsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.establishments, 'lookup'),
+    queryFn: () => getFullList<Establishment>(COLLECTIONS.establishments, {
+      fields: 'id,name,status',
+      sort: 'name',
+    }),
+    staleTime: STALE.establishments,
+  })
+
+  const activitiesQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.activities, 'lookup'),
+    queryFn: () => getFullList<Activity>(COLLECTIONS.activities, {
+      fields: 'id,title,status,start_datetime',
+      sort: '-start_datetime',
+    }),
+    staleTime: STALE.activities,
+  })
+
+  const existing = announcementQuery.data
+  const establishments = establishmentsQuery.data ?? []
+  const activities = activitiesQuery.data ?? []
 
   const { register, handleSubmit, control, reset, formState: { errors, isDirty } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -51,9 +84,23 @@ export default function AnnouncementFormPage() {
     if (existing) reset({ title: existing.title, content: existing.content, priority: existing.priority, language: existing.language, related_establishment: existing.related_establishment, related_activity: existing.related_activity, status: existing.status })
   }, [existing, reset])
 
+  const saveMutation = useMutation({
+    mutationFn: (data: FormValues) => isEdit && id
+      ? updateRecord<Announcement>(COLLECTIONS.announcements, id, data)
+      : createRecord<Announcement>(COLLECTIONS.announcements, data),
+    onSuccess: (announcement) => {
+      toast.success(isEdit ? 'Annonce mise à jour' : 'Annonce créée', { description: announcement.title })
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.announcements) })
+      navigate('/announcements')
+    },
+  })
+
   function onSubmit(data: FormValues) {
-    toast.success(isEdit ? 'Annonce mise à jour (mock)' : 'Annonce créée (mock)', { description: data.title })
-    navigate('/announcements')
+    saveMutation.mutate(data)
+  }
+
+  if (isEdit && announcementQuery.isLoading) {
+    return <PageSkeleton />
   }
 
   return (
@@ -64,7 +111,7 @@ export default function AnnouncementFormPage() {
         action={
           <div className="flex gap-2">
             <Button variant="outline" size="sm" asChild><Link to="/announcements"><ArrowLeft className="h-4 w-4" />Retour</Link></Button>
-            {canWrite && <Button type="submit" size="sm" disabled={!isDirty && isEdit}><Save className="h-4 w-4" />{isEdit ? 'Enregistrer' : 'Créer'}</Button>}
+            {canWrite && <Button type="submit" size="sm" disabled={saveMutation.isPending || (!isDirty && isEdit)}><Save className="h-4 w-4" />{isEdit ? 'Enregistrer' : 'Créer'}</Button>}
           </div>
         }
       />
@@ -110,7 +157,7 @@ export default function AnnouncementFormPage() {
                     <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">Aucun</SelectItem>
-                      {MOCK_ESTABLISHMENTS.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                      {establishments.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 )} />
@@ -121,7 +168,7 @@ export default function AnnouncementFormPage() {
                     <SelectTrigger><SelectValue placeholder="Aucune" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">Aucune</SelectItem>
-                      {MOCK_ACTIVITIES.map((a) => <SelectItem key={a.id} value={a.id}>{a.title}</SelectItem>)}
+                      {activities.map((a) => <SelectItem key={a.id} value={a.id}>{a.title}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 )} />
@@ -143,7 +190,7 @@ export default function AnnouncementFormPage() {
                 </Select>
               )} />
             </FormField>
-            {canWrite && <Button type="submit" className="w-full" disabled={!isDirty && isEdit}><Save className="h-4 w-4" />{isEdit ? 'Enregistrer' : 'Créer'}</Button>}
+            {canWrite && <Button type="submit" className="w-full" disabled={saveMutation.isPending || (!isDirty && isEdit)}><Save className="h-4 w-4" />{isEdit ? 'Enregistrer' : 'Créer'}</Button>}
           </SectionCard>
         </div>
       </div>

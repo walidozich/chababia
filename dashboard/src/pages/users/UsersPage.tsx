@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { type ColumnDef } from '@tanstack/react-table'
 import { CheckCircle, KeyRound, Pencil, Plus, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -7,12 +8,16 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { TableSkeleton } from '@/components/shared/LoadingSkeletons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { MOCK_USERS } from '@/mocks'
 import type { User } from '@/types/collections'
 import { useAuthStore } from '@/stores/authStore'
+import { pb } from '@/lib/pb'
+import { COLLECTIONS, getFullList, qk } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
 
 const ROLE_LABELS: Record<string, string> = {
   youth: 'Jeune',
@@ -36,15 +41,30 @@ export default function UsersPage() {
   const [search, setSearch] = useState('')
   const [filterRole, setFilterRole] = useState('all')
   const [filterWilaya, setFilterWilaya] = useState('all')
+  const usersQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.users),
+    queryFn: () => getFullList<User>(COLLECTIONS.users, { sort: '-created' }),
+    enabled: isSuperuser,
+    staleTime: STALE.users,
+  })
+
+  const users = usersQuery.data ?? []
+
+  const resetMutation = useMutation({
+    mutationFn: (user: User) => pb.collection(COLLECTIONS.users).requestPasswordReset(user.email),
+    onSuccess: (_result, user) => {
+      toast.success('Email de réinitialisation envoyé', { description: user.email })
+    },
+  })
 
   const wilayas = useMemo(
-    () => [...new Set(MOCK_USERS.map((user) => user.wilaya).filter((wilaya) => wilaya.length > 0))].sort(),
-    [],
+    () => [...new Set(users.map((user) => user.wilaya).filter((wilaya) => wilaya.length > 0))].sort(),
+    [users],
   )
 
   const filtered = useMemo(() => {
     const query = search.toLowerCase()
-    return MOCK_USERS.filter((user) => {
+    return users.filter((user) => {
       if (
         query &&
         !user.full_name.toLowerCase().includes(query) &&
@@ -53,8 +73,8 @@ export default function UsersPage() {
       if (filterRole !== 'all' && user.role !== filterRole) return false
       if (filterWilaya !== 'all' && user.wilaya !== filterWilaya) return false
       return true
-    }).sort((a, b) => b.created.localeCompare(a.created))
-  }, [search, filterRole, filterWilaya])
+    })
+  }, [users, search, filterRole, filterWilaya])
 
   if (!isSuperuser) return <AccessDenied />
 
@@ -108,9 +128,8 @@ export default function UsersPage() {
             size="icon"
             className="h-8 w-8"
             title="Réinitialiser mot de passe"
-            onClick={() => {
-              toast.success('Email de réinitialisation envoyé (mock)', { description: row.original.email })
-            }}
+            disabled={resetMutation.isPending}
+            onClick={() => resetMutation.mutate(row.original)}
           >
             <KeyRound className="h-3.5 w-3.5" />
           </Button>
@@ -128,7 +147,7 @@ export default function UsersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Utilisateurs"
-        description={`${String(MOCK_USERS.length)} comptes enregistrés`}
+        description={`${String(users.length)} comptes enregistrés`}
         action={
           <Button asChild size="sm">
             <Link to="/users/new">
@@ -173,7 +192,11 @@ export default function UsersPage() {
       </div>
 
       <div className="bento-card">
-        {filtered.length === 0 ? (
+        {usersQuery.isLoading ? (
+          <TableSkeleton rows={8} cols={6} />
+        ) : usersQuery.error ? (
+          <ErrorState onRetry={() => { void usersQuery.refetch() }} />
+        ) : filtered.length === 0 ? (
           <EmptyState title="Aucun utilisateur trouvé" description="Modifiez les filtres de recherche." />
         ) : (
           <DataTable columns={columns} data={filtered} pageSize={10} />

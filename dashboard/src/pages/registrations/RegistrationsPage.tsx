@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type ColumnDef } from '@tanstack/react-table'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -8,16 +9,16 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { TableSkeleton } from '@/components/shared/LoadingSkeletons'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { MOCK_REGISTRATIONS, MOCK_ACTIVITIES } from '@/mocks'
-import type { Registration } from '@/types/collections'
+import type { Activity, Registration } from '@/types/collections'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/authStore'
-
-const activityTitle = (id: string) =>
-  MOCK_ACTIVITIES.find((activity) => activity.id === id)?.title ?? id
+import { COLLECTIONS, getFullList, qk, updateRecord } from '@/lib/pbData'
+import { STALE } from '@/lib/staleTimes'
 
 function exportCSV(rows: Registration[]) {
   const header = 'Nom,Email,Téléphone,Statut,Pointage'
@@ -45,10 +46,36 @@ export default function RegistrationsPage() {
   const [search, setSearch] = useState('')
   const [filterActivity, setFilterActivity] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
+  const queryClient = useQueryClient()
+
+  const registrationsQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.registrations),
+    queryFn: () => getFullList<Registration>(COLLECTIONS.registrations, {
+      sort: '-created',
+      expand: 'activity,user',
+    }),
+    staleTime: STALE.registrations,
+  })
+
+  const activitiesQuery = useQuery({
+    queryKey: qk.list(COLLECTIONS.activities, 'lookup'),
+    queryFn: () => getFullList<Activity>(COLLECTIONS.activities, {
+      fields: 'id,title,capacity,start_datetime',
+      sort: '-start_datetime',
+    }),
+    staleTime: STALE.activities,
+  })
+
+  const registrations = registrationsQuery.data ?? []
+  const activities = activitiesQuery.data ?? []
+  const activityMap = useMemo(
+    () => new Map(activities.map((activity) => [activity.id, activity])),
+    [activities],
+  )
 
   const filtered = useMemo(() => {
     const query = search.toLowerCase()
-    return MOCK_REGISTRATIONS.filter((registration) => {
+    return registrations.filter((registration) => {
       if (
         query &&
         !registration.full_name.toLowerCase().includes(query) &&
@@ -57,19 +84,31 @@ export default function RegistrationsPage() {
       if (filterActivity !== 'all' && registration.activity !== filterActivity) return false
       if (filterStatus !== 'all' && registration.status !== filterStatus) return false
       return true
-    }).sort((a, b) => b.created.localeCompare(a.created))
-  }, [search, filterActivity, filterStatus])
+    })
+  }, [registrations, search, filterActivity, filterStatus])
 
   const activityStats = useMemo(() => {
-    return MOCK_ACTIVITIES.map((activity) => {
-      const rows = MOCK_REGISTRATIONS.filter((registration) => registration.activity === activity.id)
+    return activities.map((activity) => {
+      const rows = registrations.filter((registration) => registration.activity === activity.id)
       const registered = rows.filter(
         (registration) => registration.status === 'registered' || registration.status === 'attended',
       ).length
       const waiting = rows.filter((registration) => registration.status === 'waiting_list').length
       return { activity, registered, waiting }
     }).filter((item) => item.registered > 0 || item.waiting > 0)
-  }, [])
+  }, [activities, registrations])
+
+  const checkInMutation = useMutation({
+    mutationFn: (registration: Registration) => updateRecord<Registration>(
+      COLLECTIONS.registrations,
+      registration.id,
+      { checked_in_at: new Date().toISOString() },
+    ),
+    onSuccess: (registration) => {
+      toast.success('Pointage enregistré', { description: registration.full_name })
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.registrations) })
+    },
+  })
 
   const columns: ColumnDef<Registration>[] = [
     {
@@ -92,7 +131,7 @@ export default function RegistrationsPage() {
       header: 'Activité',
       cell: ({ row }) => (
         <span className="line-clamp-2 max-w-[240px] text-on-surface-variant">
-          {activityTitle(row.original.activity)}
+          {row.original.expand?.activity?.title ?? activityMap.get(row.original.activity)?.title ?? row.original.activity}
         </span>
       ),
     },
@@ -115,11 +154,12 @@ export default function RegistrationsPage() {
       cell: ({ row }) => (
         <div className="flex justify-end">
           {canWrite && row.original.status === 'registered' ? (
-            <Button
+          <Button
               variant="outline"
               size="sm"
               className="h-7 text-xs"
-              onClick={() => toast.success('Pointage enregistré (mock)', { description: row.original.full_name })}
+              disabled={checkInMutation.isPending}
+              onClick={() => checkInMutation.mutate(row.original)}
             >
               <UserCheck className="h-3 w-3" />
               Marquer présent
@@ -134,7 +174,7 @@ export default function RegistrationsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Inscriptions"
-        description={`${String(MOCK_REGISTRATIONS.length)} inscriptions au total`}
+        description={`${String(registrations.length)} inscriptions au total`}
         action={
           <Button
             size="sm"
@@ -175,7 +215,7 @@ export default function RegistrationsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Toutes les activités</SelectItem>
-            {MOCK_ACTIVITIES.map((activity) => (
+            {activities.map((activity) => (
               <SelectItem key={activity.id} value={activity.id}>{activity.title}</SelectItem>
             ))}
           </SelectContent>
@@ -195,7 +235,11 @@ export default function RegistrationsPage() {
       </div>
 
       <div className="bento-card">
-        {filtered.length === 0 ? (
+        {registrationsQuery.isLoading || activitiesQuery.isLoading ? (
+          <TableSkeleton rows={8} cols={6} />
+        ) : registrationsQuery.error || activitiesQuery.error ? (
+          <ErrorState onRetry={() => { void registrationsQuery.refetch(); void activitiesQuery.refetch() }} />
+        ) : filtered.length === 0 ? (
           <EmptyState title="Aucune inscription trouvée" description="Modifiez les filtres de recherche." />
         ) : (
           <DataTable columns={columns} data={filtered} pageSize={10} />
