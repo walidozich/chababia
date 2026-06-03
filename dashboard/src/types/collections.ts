@@ -36,7 +36,7 @@ export type ProjectStatus =
   | 'rejected'
   | 'needs_more_info'
 
-export type TalentStatus = 'draft' | 'published' | 'rejected'
+export type TalentStatus = 'draft' | 'published' | 'archived'
 
 export type ReportStatus = 'new' | 'reviewed' | 'resolved' | 'dismissed'
 export type ReportReason =

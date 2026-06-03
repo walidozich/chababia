@@ -62,22 +62,16 @@ function useBreadcrumbs() {
   return crumbs
 }
 
-function field(record: unknown, key: string): unknown {
-  if (!record || typeof record !== 'object') return undefined
-  return (record as Record<string, unknown>)[key]
-}
-
 export function Topbar() {
   const breadcrumbs = useBreadcrumbs()
   const navigate = useNavigate()
-  const { role, isAdmin, userName: storedUserName, clearAuth } = useAuthStore()
+  const { role, isAdmin, userName: storedUserName, userEmail, clearAuth } = useAuthStore()
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
   const roleName = isAdmin ? 'super_admin' : role
   const roleLabel = roleName ? ROLE_LABELS[roleName] ?? roleName : 'Session'
 
   const userName = storedUserName ?? 'Utilisateur'
-  const email = field(pb.authStore.record, 'email')
-  const emailLabel = typeof email === 'string' && email.length > 0 ? email : roleLabel
+  const emailLabel = userEmail && userEmail.length > 0 ? userEmail : roleLabel
   const initials = userName
     .split(' ')
     .map((word) => word[0])

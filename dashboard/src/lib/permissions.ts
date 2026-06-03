@@ -65,5 +65,9 @@ export function can(
     // all other resources are readable by any authenticated user with a non-youth role
     return isAdmin || (role !== null && role !== 'youth')
   }
+  if (action === 'delete') {
+    // delete uses the same gates as write; can be tightened per-resource in future
+    return WRITE_RULES[resource](role, isAdmin)
+  }
   return WRITE_RULES[resource](role, isAdmin)
 }

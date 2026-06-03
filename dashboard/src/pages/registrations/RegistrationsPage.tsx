@@ -51,8 +51,9 @@ export default function RegistrationsPage() {
   const registrationsQuery = useQuery({
     queryKey: qk.list(COLLECTIONS.registrations),
     queryFn: () => getFullList<Registration>(COLLECTIONS.registrations, {
+      fields: 'id,full_name,email,phone,status,checked_in_at,activity,expand.activity.id,expand.activity.title',
       sort: '-created',
-      expand: 'activity,user',
+      expand: 'activity',
     }),
     staleTime: STALE.registrations,
   })

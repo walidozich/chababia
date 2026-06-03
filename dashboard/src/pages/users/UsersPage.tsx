@@ -43,12 +43,15 @@ export default function UsersPage() {
   const [filterWilaya, setFilterWilaya] = useState('all')
   const usersQuery = useQuery({
     queryKey: qk.list(COLLECTIONS.users),
-    queryFn: () => getFullList<User>(COLLECTIONS.users, { sort: '-created' }),
+    queryFn: () => getFullList<User>(COLLECTIONS.users, {
+      fields: 'id,full_name,email,role,verified,preferred_language,commune,wilaya',
+      sort: '-created',
+    }),
     enabled: isSuperuser,
     staleTime: STALE.users,
   })
 
-  const users = usersQuery.data ?? []
+  const users = useMemo(() => usersQuery.data ?? [], [usersQuery.data])
 
   const resetMutation = useMutation({
     mutationFn: (user: User) => pb.collection(COLLECTIONS.users).requestPasswordReset(user.email),
@@ -129,7 +132,7 @@ export default function UsersPage() {
             className="h-8 w-8"
             title="Réinitialiser mot de passe"
             disabled={resetMutation.isPending}
-            onClick={() => resetMutation.mutate(row.original)}
+            onClick={() => { resetMutation.mutate(row.original) }}
           >
             <KeyRound className="h-3.5 w-3.5" />
           </Button>

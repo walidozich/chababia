@@ -3,7 +3,6 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell,
   Tooltip,
   BarChart,
   Bar,
@@ -83,7 +82,7 @@ export default function HomeCharts() {
     queryFn: () => getFullList<Registration>(COLLECTIONS.registrations, {
       fields: 'id,status',
     }),
-    staleTime: STALE.contentReports,
+    staleTime: STALE.registrations,
   })
   const reportsQuery = useQuery({
     queryKey: qk.list(COLLECTIONS.contentReports, 'home'),
@@ -91,36 +90,36 @@ export default function HomeCharts() {
       fields: 'id,status',
     }),
     enabled: isAdmin,
-    staleTime: STALE.projectSubmissions,
+    staleTime: STALE.contentReports,
   })
   const projectsQuery = useQuery({
     queryKey: qk.list(COLLECTIONS.projectSubmissions, 'home'),
     queryFn: () => getFullList<ProjectSubmission>(COLLECTIONS.projectSubmissions, {
       fields: 'id,status',
     }),
-    staleTime: STALE.registrations,
+    staleTime: STALE.projectSubmissions,
   })
 
-  const activities = activitiesQuery.data ?? []
-  const registrations = registrationsQuery.data ?? []
-  const reports = reportsQuery.data ?? []
-  const projects = projectsQuery.data ?? []
+  const activities = useMemo(() => activitiesQuery.data ?? [], [activitiesQuery.data])
+  const registrations = useMemo(() => registrationsQuery.data ?? [], [registrationsQuery.data])
+  const reports = useMemo(() => reportsQuery.data ?? [], [reportsQuery.data])
+  const projects = useMemo(() => projectsQuery.data ?? [], [projectsQuery.data])
 
   const openReports = isAdmin ? reports.filter((r) => r.status === 'new').length : null
   const pendingProjects = projects.filter((p) => p.status === 'submitted').length
 
   const activityStatusData = useMemo(() => [
-    { name: 'Publiées', value: activities.filter((a) => a.status === 'published').length, color: C.lime },
-    { name: 'Brouillons', value: activities.filter((a) => a.status === 'draft').length, color: C.gray },
-    { name: 'Annulées', value: activities.filter((a) => a.status === 'cancelled').length, color: C.errorContainer },
-    { name: 'Archivées', value: activities.filter((a) => a.status === 'archived').length, color: C.outline },
+    { name: 'Publiées', value: activities.filter((a) => a.status === 'published').length, fill: C.lime },
+    { name: 'Brouillons', value: activities.filter((a) => a.status === 'draft').length, fill: C.gray },
+    { name: 'Annulées', value: activities.filter((a) => a.status === 'cancelled').length, fill: C.errorContainer },
+    { name: 'Archivées', value: activities.filter((a) => a.status === 'archived').length, fill: C.outline },
   ].filter((d) => d.value > 0), [activities])
 
   const registrationStatusData = useMemo(() => [
-    { name: 'Inscrits', value: registrations.filter((r) => r.status === 'registered').length, color: C.lime },
-    { name: 'Présents', value: registrations.filter((r) => r.status === 'attended').length, color: C.forest },
-    { name: 'Liste att.', value: registrations.filter((r) => r.status === 'waiting_list').length, color: C.gray },
-    { name: 'Annulés', value: registrations.filter((r) => r.status === 'cancelled').length, color: C.errorContainer },
+    { name: 'Inscrits', value: registrations.filter((r) => r.status === 'registered').length, fill: C.lime },
+    { name: 'Présents', value: registrations.filter((r) => r.status === 'attended').length, fill: C.forest },
+    { name: 'Liste att.', value: registrations.filter((r) => r.status === 'waiting_list').length, fill: C.gray },
+    { name: 'Annulés', value: registrations.filter((r) => r.status === 'cancelled').length, fill: C.errorContainer },
   ].filter((d) => d.value > 0), [registrations])
 
   const activitiesByWilaya = useMemo(() => Object.entries(
@@ -131,16 +130,16 @@ export default function HomeCharts() {
   ).map(([wilaya, count]) => ({ wilaya, count })), [activities])
 
   const activityModeData = useMemo(() => [
-    { name: 'Présentiel', value: activities.filter((a) => a.activity_mode === 'physical').length, color: C.lime },
-    { name: 'En ligne', value: activities.filter((a) => a.activity_mode === 'online').length, color: C.forest },
-    { name: 'Hybride', value: activities.filter((a) => a.activity_mode === 'hybrid').length, color: C.gray },
+    { name: 'Présentiel', value: activities.filter((a) => a.activity_mode === 'physical').length, fill: C.lime },
+    { name: 'En ligne', value: activities.filter((a) => a.activity_mode === 'online').length, fill: C.forest },
+    { name: 'Hybride', value: activities.filter((a) => a.activity_mode === 'hybrid').length, fill: C.gray },
   ].filter((d) => d.value > 0), [activities])
 
   const projectStatusData = useMemo(() => [
-    { name: 'Soumis', value: projects.filter((p) => p.status === 'submitted').length, color: C.lime },
-    { name: 'Examiné', value: projects.filter((p) => p.status === 'reviewed').length, color: C.gray },
-    { name: 'Accepté', value: projects.filter((p) => p.status === 'accepted').length, color: C.forest },
-    { name: 'Info manq.', value: projects.filter((p) => p.status === 'needs_more_info').length, color: C.orange },
+    { name: 'Soumis', value: projects.filter((p) => p.status === 'submitted').length, fill: C.lime },
+    { name: 'Examiné', value: projects.filter((p) => p.status === 'reviewed').length, fill: C.gray },
+    { name: 'Accepté', value: projects.filter((p) => p.status === 'accepted').length, fill: C.forest },
+    { name: 'Info manq.', value: projects.filter((p) => p.status === 'needs_more_info').length, fill: C.orange },
   ].filter((d) => d.value > 0), [projects])
 
   const upcomingActivities = useMemo(() => activities
@@ -165,11 +164,7 @@ export default function HomeCharts() {
                   paddingAngle={3}
                   dataKey="value"
                   strokeWidth={0}
-                >
-                  {activityStatusData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Pie>
+                />
                 <Tooltip content={<ChartTooltip />} />
               </PieChart>
             </ResponsiveContainer>
@@ -181,7 +176,7 @@ export default function HomeCharts() {
           <div className="flex flex-wrap gap-2">
             {activityStatusData.map((d) => (
               <div key={d.name} className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.fill }} />
                 <span className="text-xs text-on-surface-variant">{d.name} ({d.value})</span>
               </div>
             ))}
@@ -197,11 +192,7 @@ export default function HomeCharts() {
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: C.textMuted }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: C.textMuted }} allowDecimals={false} />
                 <Tooltip content={<ChartTooltip />} cursor={{ fill: C.surfaceContainer }} />
-                <Bar dataKey="value" name="Inscriptions" radius={[6, 6, 0, 0]}>
-                  {registrationStatusData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Bar>
+                <Bar dataKey="value" name="Inscriptions" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -250,11 +241,7 @@ export default function HomeCharts() {
                   paddingAngle={3}
                   dataKey="value"
                   strokeWidth={0}
-                >
-                  {activityModeData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Pie>
+                />
                 <Tooltip content={<ChartTooltip />} />
               </PieChart>
             </ResponsiveContainer>
@@ -262,7 +249,7 @@ export default function HomeCharts() {
           <div className="flex flex-wrap gap-2">
             {activityModeData.map((d) => (
               <div key={d.name} className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.fill }} />
                 <span className="text-xs text-on-surface-variant">{d.name} ({d.value})</span>
               </div>
             ))}
@@ -278,11 +265,7 @@ export default function HomeCharts() {
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: C.textMuted }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: C.textMuted }} allowDecimals={false} />
                 <Tooltip content={<ChartTooltip />} cursor={{ fill: C.surfaceContainer }} />
-                <Bar dataKey="value" name="Projets" radius={[6, 6, 0, 0]}>
-                  {projectStatusData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Bar>
+                <Bar dataKey="value" name="Projets" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -38,7 +38,10 @@ export default function CategoriesPage() {
 
   const categoriesQuery = useQuery({
     queryKey: qk.list(COLLECTIONS.categories),
-    queryFn: () => getFullList<Category>(COLLECTIONS.categories, { sort: 'name' }),
+    queryFn: () => getFullList<Category>(COLLECTIONS.categories, {
+      fields: 'id,name,icon,status',
+      sort: 'name',
+    }),
     staleTime: STALE.categories,
   })
 
@@ -96,7 +99,7 @@ export default function CategoriesPage() {
       id: 'actions', header: '',
       cell: ({ row }) => canWrite ? (
         <div className="flex justify-end">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(row.original)}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { openEdit(row.original) }}>
             <Pencil className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -108,7 +111,7 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Catégories"
-        description={`${categories.length} catégories`}
+        description={`${String(categories.length)} catégories`}
         action={canWrite ? <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4" />Nouvelle catégorie</Button> : undefined}
       />
       <div className="bento-card">
@@ -126,7 +129,7 @@ export default function CategoriesPage() {
           <DialogHeader>
             <DialogTitle>{editTarget ? 'Modifier la catégorie' : 'Nouvelle catégorie'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={(e) => { void handleSubmit(onSubmit)(e) }} className="space-y-4">
             <FormField label="Nom" required error={errors.name?.message}>
               <Input {...register('name')} placeholder="Ex: Sports" />
             </FormField>

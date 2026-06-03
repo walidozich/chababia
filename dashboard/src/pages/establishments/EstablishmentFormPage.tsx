@@ -178,6 +178,14 @@ export default function EstablishmentFormPage() {
     saveMutation.mutate(data)
   }
 
+  if (!canWrite) {
+    return (
+      <div className="bento-card py-16 text-center">
+        <p className="text-label-lg font-bold text-error">Accès non autorisé.</p>
+      </div>
+    )
+  }
+
   if (isEdit && establishmentQuery.isLoading) {
     return <PageSkeleton />
   }

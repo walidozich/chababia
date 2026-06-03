@@ -6,7 +6,8 @@ interface AuthState {
   role: Role | null
   userId: string | null
   userName: string | null
-  setAuth: (payload: { isAdmin: boolean; role: Role | null; userId: string; userName: string }) => void
+  userEmail: string | null
+  setAuth: (payload: { isAdmin: boolean; role: Role | null; userId: string; userName: string; userEmail: string }) => void
   clearAuth: () => void
 }
 
@@ -15,6 +16,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   role: null,
   userId: null,
   userName: null,
-  setAuth: ({ isAdmin, role, userId, userName }) => set({ isAdmin, role, userId, userName }),
-  clearAuth: () => set({ isAdmin: false, role: null, userId: null, userName: null }),
+  userEmail: null,
+  setAuth: ({ isAdmin, role, userId, userName, userEmail }) => { set({ isAdmin, role, userId, userName, userEmail }) },
+  clearAuth: () => { set({ isAdmin: false, role: null, userId: null, userName: null, userEmail: null }) },
 }))

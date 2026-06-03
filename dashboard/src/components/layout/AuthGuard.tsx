@@ -39,6 +39,7 @@ export function syncAuthStore() {
       : typeof email === 'string' && email.length > 0
         ? email
         : 'Admin Chababia',
+    userEmail: typeof email === 'string' ? email : '',
   })
 }
 

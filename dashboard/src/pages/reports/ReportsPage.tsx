@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type ColumnDef } from '@tanstack/react-table'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { Activity, Announcement, ContentReport, Document, Establishment, Newsletter } from '@/types/collections'
 import { useAuthStore } from '@/stores/authStore'
-import { COLLECTIONS, getFullList, qk } from '@/lib/pbData'
+import { COLLECTIONS, getFullList, qk, updateRecord } from '@/lib/pbData'
 import { STALE } from '@/lib/staleTimes'
 
 const REASON_LABELS: Record<string, string> = {
@@ -61,11 +61,18 @@ function resolveTarget(
   }
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  resolved: 'Marqué résolu',
+  dismissed: 'Ignoré',
+  reviewed: 'Marqué examiné',
+}
+
 export default function ReportsPage() {
   const isSuperuser = useAuthStore((state) => state.isAdmin)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('new')
   const [filterTargetType, setFilterTargetType] = useState('all')
+  const queryClient = useQueryClient()
 
   const reportsQuery = useQuery({
     queryKey: qk.list(COLLECTIONS.contentReports),
@@ -112,7 +119,16 @@ export default function ReportsPage() {
     staleTime: STALE.documents,
   })
 
-  const reports = reportsQuery.data ?? []
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: ContentReport['status'] }) =>
+      updateRecord<ContentReport>(COLLECTIONS.contentReports, id, { status }),
+    onSuccess: (_result, { status }) => {
+      toast.success(STATUS_LABELS[status] ?? status)
+      void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.contentReports) })
+    },
+  })
+
+  const reports = useMemo(() => reportsQuery.data ?? [], [reportsQuery.data])
   const targets = useMemo(() => ({
     activities: new Map((activitiesQuery.data ?? []).map((item) => [item.id, item.title])),
     establishments: new Map((establishmentsQuery.data ?? []).map((item) => [item.id, item.name])),
@@ -192,7 +208,8 @@ export default function ReportsPage() {
                   variant="outline"
                   size="sm"
                   className="h-7 text-xs"
-                  onClick={() => toast.info('Traitement côté serveur requis', { description: resolveTarget(row.original, targets) })}
+                  disabled={statusMutation.isPending}
+                  onClick={() => { statusMutation.mutate({ id: row.original.id, status: 'resolved' }) }}
                 >
                   <CheckCircle className="h-3 w-3" />
                   Résolu
@@ -201,7 +218,8 @@ export default function ReportsPage() {
                   variant="outline"
                   size="sm"
                   className="h-7 text-xs"
-                  onClick={() => toast.info('Traitement côté serveur requis', { description: resolveTarget(row.original, targets) })}
+                  disabled={statusMutation.isPending}
+                  onClick={() => { statusMutation.mutate({ id: row.original.id, status: 'dismissed' }) }}
                 >
                   <XCircle className="h-3 w-3" />
                   Ignoré
@@ -210,7 +228,8 @@ export default function ReportsPage() {
                   variant="outline"
                   size="sm"
                   className="h-7 text-xs"
-                  onClick={() => toast.info('Traitement côté serveur requis', { description: resolveTarget(row.original, targets) })}
+                  disabled={statusMutation.isPending}
+                  onClick={() => { statusMutation.mutate({ id: row.original.id, status: 'reviewed' }) }}
                 >
                   <Eye className="h-3 w-3" />
                   Examiné

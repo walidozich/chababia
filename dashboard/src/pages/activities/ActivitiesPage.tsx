@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input'
 import type { Activity, Category } from '@/types/collections'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/authStore'
-import { COLLECTIONS, createRecord, deleteRecord, getFullList, qk, scrubServerFields } from '@/lib/pbData'
+import { COLLECTIONS, createRecord, deleteRecord, getFullList, getOne, qk, scrubServerFields } from '@/lib/pbData'
 import { STALE } from '@/lib/staleTimes'
 
 function VerifiedIndicator({ date }: { date: string }) {
@@ -43,8 +43,9 @@ export default function ActivitiesPage() {
   const activitiesQuery = useQuery({
     queryKey: qk.list(COLLECTIONS.activities),
     queryFn: () => getFullList<Activity>(COLLECTIONS.activities, {
+      fields: 'id,title,status,activity_mode,commune,wilaya,start_datetime,last_verified_at,category,expand.category.id,expand.category.name',
       sort: 'start_datetime',
-      expand: 'category,establishment',
+      expand: 'category',
     }),
     staleTime: STALE.activities,
   })
@@ -90,12 +91,15 @@ export default function ActivitiesPage() {
   })
 
   const duplicateMutation = useMutation({
-    mutationFn: (activity: Activity) => createRecord<Activity>(COLLECTIONS.activities, {
-      ...scrubServerFields(activity as unknown as Record<string, unknown>),
-      title: `${activity.title} (copie)`,
-      status: 'draft',
-      image: '',
-    }),
+    mutationFn: async (activity: Activity) => {
+      const full = await getOne<Activity>(COLLECTIONS.activities, activity.id)
+      return createRecord<Activity>(COLLECTIONS.activities, {
+        ...scrubServerFields(full as unknown as Record<string, unknown>),
+        title: `${full.title} (copie)`,
+        status: 'draft',
+        image: '',
+      })
+    },
     onSuccess: (activity) => {
       toast.success('Brouillon dupliqué', { description: activity.title })
       void queryClient.invalidateQueries({ queryKey: qk.collection(COLLECTIONS.activities) })

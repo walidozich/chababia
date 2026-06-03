@@ -158,21 +158,21 @@ export default function HomePage() {
               value={publishedActivities}
               icon={Zap}
               accent="bg-primary-container text-primary-on-container"
-              sub={`${activities.length} total`}
+              sub={`${String(activities.length)} total`}
             />
             <KpiCard
               label="Établissements actifs"
               value={activeEstablishments}
               icon={Building2}
               accent="bg-tertiary-container text-tertiary-on-container"
-              sub={`${establishments.length} total`}
+              sub={`${String(establishments.length)} total`}
             />
             <KpiCard
               label="Inscriptions"
               value={totalRegistrations}
               icon={ClipboardList}
               accent="bg-secondary-container text-secondary-on-container"
-              sub={`${registrations.filter((r) => r.status === 'attended').length} présences`}
+              sub={`${String(registrations.filter((r) => r.status === 'attended').length)} présences`}
             />
             {openReports !== null && (
               <KpiCard

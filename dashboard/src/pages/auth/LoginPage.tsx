@@ -65,6 +65,7 @@ export default function LoginPage() {
         role: 'super_admin',
         userId: typeof id === 'string' ? id : '',
         userName: data.email,
+        userEmail: data.email,
       })
       toast.success('Connexion superadmin réussie')
       void navigate('/', { replace: true })
@@ -90,6 +91,7 @@ export default function LoginPage() {
           : typeof email === 'string' && email.length > 0
             ? email
             : data.email,
+        userEmail: typeof email === 'string' ? email : data.email,
       })
       toast.success('Connexion réussie')
       void navigate('/', { replace: true })
@@ -158,7 +160,7 @@ export default function LoginPage() {
               d'établissement et les superadmins.
             </p>
           </div>
-          <p className="relative z-10 text-body-sm text-on-surface-variant">ECOHACK '26 · Plateforme Chababia</p>
+          <p className="relative z-10 text-body-sm text-on-surface-variant"> </p>
         </section>
 
         <section className="flex min-h-screen items-center justify-center px-8 py-12">
